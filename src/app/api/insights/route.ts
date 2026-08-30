@@ -5,6 +5,7 @@ export const runtime = 'edge';
 export async function POST(req: Request) {
   try {
     const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+    const anthropicWorkspaceId = process.env.ANTHROPIC_WORKSPACE_ID || '';
     const openrouterKey = process.env.OPENROUTER_API_KEY || '';
     
     if (!anthropicKey && !openrouterKey) {
@@ -35,13 +36,19 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
 
     if (anthropicKey) {
       // Use Anthropic API
+      const headers: Record<string, string> = {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      };
+
+      if (anthropicWorkspaceId) {
+        headers["anthropic-workspace-id"] = anthropicWorkspaceId;
+      }
+
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: {
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
           model: "claude-3-haiku-20240307", // fast and cheap model, perfect for this
           max_tokens: 1024,

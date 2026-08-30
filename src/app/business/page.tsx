@@ -77,10 +77,19 @@ export default function BusinessDashboard() {
     let paidTax = 0;
 
     const businessTransactions = state.transactions.filter(t => t.isBusiness);
+    
+    // Calculate Split Rule Distributions (all-time, or we can filter by activeRange. Let's do all-time or activeRange?
+    // Let's do activeRange for consistency with the rest of the metrics).
     const pTxns = businessTransactions.filter(t => {
       const d = new Date(t.date);
       return d >= activeRange.start && d <= activeRange.end;
     });
+
+    const ruleStats = state.splitRules.map(rule => {
+      const txns = pTxns.filter(t => t.appliedSplitRuleId === rule.id);
+      const totalProcessed = txns.reduce((sum, t) => sum + t.amount, 0);
+      return { rule, totalProcessed };
+    }).filter(rs => rs.totalProcessed > 0).sort((a, b) => b.totalProcessed - a.totalProcessed);
 
     pTxns.forEach(t => {
       if (t.taxAmount) {
@@ -104,8 +113,8 @@ export default function BusinessDashboard() {
     });
 
 
-    return { totalRevenue: revenue, sourceData: pieData, periodTxns: pTxns, collectedTax, paidTax };
-  }, [state.transactions, state.revenueSources, activeRange]);
+    return { totalRevenue: revenue, sourceData: pieData, periodTxns: pTxns, collectedTax, paidTax, ruleStats };
+  }, [state.transactions, state.revenueSources, state.splitRules, activeRange]);
 
   return (
     <div className="page-container">
@@ -256,6 +265,50 @@ export default function BusinessDashboard() {
           </div>
         </div>
       </div>
+
+      {ruleStats.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 16 }}>Split Rule Distributions</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+            {ruleStats.map(({ rule, totalProcessed }) => (
+              <div key={rule.id} className="card" style={{ padding: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <SplitSquareHorizontal size={18} color="var(--accent)" />
+                      {rule.name}
+                    </h3>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Processed</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{formatCurrency(totalProcessed, state.currency)}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {rule.splits.map((split, idx) => {
+                    const targetName = split.targetType === 'account' 
+                      ? state.accounts.find(a => a.id === split.targetId)?.name || 'Unknown Account'
+                      : state.categories.find(c => c.id === split.targetId)?.name || 'Unknown Category';
+                    const amount = (totalProcessed * (split.percentage / 100));
+                    return (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-input)', borderRadius: 8 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{targetName}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{split.targetType === 'account' ? 'Bank Account' : 'Category'} &middot; {split.percentage}%</div>
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {formatCurrency(amount, state.currency)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Business Dashboard Widgets */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

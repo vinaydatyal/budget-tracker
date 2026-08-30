@@ -5,8 +5,7 @@ import { AppState, AppAction, Transaction, Category, BudgetGoal, Account, Recurr
 import { loadState, saveState, DEFAULT_STATE } from '@/lib/storage';
 import { DEMO_TRANSACTIONS } from '@/lib/demoData';
 import { useAuth } from './AuthContext';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { findOrCreateBackupFile, uploadToDrive, downloadFromDrive } from '@/lib/drive';
 import { toast } from 'react-hot-toast';
 import { QUESTS } from '@/lib/achievements';
 import { LedgerEntry } from '@/lib/types';
@@ -469,7 +468,8 @@ function uid() {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, DEFAULT_STATE);
-  const { user } = useAuth();
+  const { user, googleToken } = useAuth();
+  const [driveFileId, setDriveFileId] = React.useState<string | null>(null);
 
   // Evaluate Achievements
   useEffect(() => {
@@ -494,17 +494,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async function loadData() {
       let saved = loadState();
 
-      if (user && db) {
+      if (user && googleToken) {
         try {
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            saved = docSnap.data().state as AppState;
-            // First time login, migrate local state to cloud. Keep local categories.
-            await setDoc(docRef, { state: saved });
+          const fileId = await findOrCreateBackupFile(googleToken);
+          setDriveFileId(fileId);
+          
+          const driveData = await downloadFromDrive(googleToken, fileId);
+          if (driveData) {
+            saved = driveData;
+          } else {
+            // First time login or empty file, migrate local state to cloud
+            await uploadToDrive(googleToken, fileId, saved);
           }
-        } catch (error) {
-          console.error("Firebase load error:", error);
+        } catch (error: any) {
+          if (error.message === 'DRIVE_UNAUTHORIZED') {
+            toast.error("Google Drive session expired. Please sign out and sign in again to sync.", { duration: 8000 });
+          } else {
+            console.error("Google Drive load error:", error);
+            toast.error("Failed to load from Google Drive.");
+          }
         }
       }
 
@@ -566,21 +574,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     loadData();
-  }, [user]);
+  }, [user, googleToken]);
 
   // Cloud Sync Logic
   const initialLoadRef = React.useRef(false);
   useEffect(() => {
     saveState(state); // Always save to local storage
     
-    if (initialLoadRef.current && user && db) {
+    if (initialLoadRef.current && user && googleToken && driveFileId) {
       const syncToCloud = async () => {
         try {
-          if (!db) return;
-          const docRef = doc(db, 'users', user.uid);
-          await setDoc(docRef, { state }, { merge: true });
-        } catch (error) {
-          console.error("Firebase sync error:", error);
+          await uploadToDrive(googleToken, driveFileId, state);
+        } catch (error: any) {
+          if (error.message === 'DRIVE_UNAUTHORIZED') {
+            toast.error("Google Drive session expired. Please sign out and sign in again to sync.", { duration: 8000, id: 'drive_expired' });
+          } else {
+            console.error("Google Drive sync error:", error);
+          }
         }
       };
       
@@ -592,7 +602,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (state.transactions.length > 0 || state.accounts.length > 0) {
       initialLoadRef.current = true;
     }
-  }, [state, user]);
+  }, [state, user, googleToken, driveFileId]);
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       window.addEventListener('load', function() {

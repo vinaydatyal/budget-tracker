@@ -8,17 +8,20 @@ import {
 import { useApp, formatCurrency } from '@/context/AppContext';
 import { format, differenceInDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
 
+import { Transaction } from '@/lib/types';
+
 interface Props {
+  transactions: Transaction[];
   activeRange: { start: Date; end: Date };
   accountIds?: string[];
   categoryIds?: string[];
 }
 
-export function IncomeExpenseChart({ activeRange, accountIds, categoryIds }: Props) {
+export function IncomeExpenseChart({ transactions, activeRange, accountIds, categoryIds }: Props) {
   const { state } = useApp();
 
   const data = useMemo(() => {
-    let txns = state.transactions.filter(t => {
+    let txns = transactions.filter(t => {
       const d = new Date(t.date);
       return d >= activeRange.start && d <= activeRange.end;
     });
@@ -45,9 +48,9 @@ export function IncomeExpenseChart({ activeRange, accountIds, categoryIds }: Pro
       formatLabel = d => format(d, 'MMM yy');
     }
 
-    const map = new Map<string, { label: string; income: number; expenses: number }>();
+    const map = new Map<string, { label: string; income: number; expenses: number; wealthTransfers: number }>();
     for (const d of intervals) {
-      map.set(getGroupKey(d), { label: formatLabel(d), income: 0, expenses: 0 });
+      map.set(getGroupKey(d), { label: formatLabel(d), income: 0, expenses: 0, wealthTransfers: 0 });
     }
 
     for (const t of txns) {
@@ -55,15 +58,18 @@ export function IncomeExpenseChart({ activeRange, accountIds, categoryIds }: Pro
       const key = getGroupKey(d);
       const entry = map.get(key);
       if (entry) {
-        if (t.type === 'income') entry.income += t.amount;
-        else if (t.type === 'expense') entry.expenses += t.amount;
+        if (t.type === 'income') {
+          entry.income += t.amount;
+        } else if (t.type === 'expense') {
+          entry.expenses += t.amount;
+        }
       }
     }
 
     return Array.from(map.values());
-  }, [state.transactions, activeRange, accountIds, categoryIds]);
+  }, [transactions, activeRange, accountIds, categoryIds]);
 
-  const hasData = data.some(d => d.income > 0 || d.expenses > 0);
+  const hasData = data.some(d => d.income > 0 || d.expenses > 0 || d.wealthTransfers > 0);
 
   const tooltipStyle = {
     contentStyle: {
@@ -90,9 +96,10 @@ export function IncomeExpenseChart({ activeRange, accountIds, categoryIds }: Pro
           <div style={{ fontSize: 13, fontWeight: 500 }}>Nothing to show</div>
         </div>
       ) : (
-        <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
-          <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <div style={{ flex: 1, minHeight: 0, width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+          <div style={{ minWidth: 400, height: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
@@ -101,6 +108,10 @@ export function IncomeExpenseChart({ activeRange, accountIds, categoryIds }: Pro
             <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
               <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="colorWealth" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -139,15 +150,27 @@ export function IncomeExpenseChart({ activeRange, accountIds, categoryIds }: Pro
           <Area
             type="monotone"
             dataKey="expenses"
+            name="Sunk Costs"
             stroke="#f43f5e"
             strokeWidth={2}
             fill="url(#colorExpenses)"
             dot={{ fill: '#f43f5e', strokeWidth: 0, r: 4 }}
             activeDot={{ r: 6, fill: '#f43f5e' }}
           />
+          <Area
+            type="monotone"
+            dataKey="wealthTransfers"
+            name="Wealth Transfers"
+            stroke="#8b5cf6"
+            strokeWidth={2}
+            fill="url(#colorWealth)"
+            dot={{ fill: '#8b5cf6', strokeWidth: 0, r: 4 }}
+            activeDot={{ r: 6, fill: '#8b5cf6' }}
+          />
           </AreaChart>
-        </ResponsiveContainer>
-      </div>
+            </ResponsiveContainer>
+          </div>
+        </div>
       )}
     </div>
   );

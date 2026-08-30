@@ -1,0 +1,1509 @@
+[
+  {
+    "id": "demo-1781172360476-c8wqpa4",
+    "type": "income",
+    "amount": 5000,
+    "categoryId": "cat-1",
+    "accountId": "acc-1",
+    "description": "Monthly Salary",
+    "date": "2025-12-31T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-5u4p18o",
+    "type": "expense",
+    "amount": 1500,
+    "categoryId": "cat-5a",
+    "accountId": "acc-1",
+    "description": "Apartment Rent",
+    "date": "2026-01-01T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-4oj7asz",
+    "type": "expense",
+    "amount": 36,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-30T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-lkjar0d",
+    "type": "expense",
+    "amount": 36,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-07T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-blsgql9",
+    "type": "expense",
+    "amount": 58,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-02T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-qqno2sx",
+    "type": "expense",
+    "amount": 31,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-15T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-cltz1dc",
+    "type": "expense",
+    "amount": 54,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-19T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-0mxzzkv",
+    "type": "expense",
+    "amount": 103,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-24T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-hu98mwd",
+    "type": "expense",
+    "amount": 75,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-02T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-3otqaem",
+    "type": "expense",
+    "amount": 66,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-30T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-9yg7ii6",
+    "type": "expense",
+    "amount": 80,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-16T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-uxoyorf",
+    "type": "expense",
+    "amount": 108,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-29T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-fd9ikag",
+    "type": "expense",
+    "amount": 64,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-20T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-ifwqzkn",
+    "type": "expense",
+    "amount": 118,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-29T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-f277uh6",
+    "type": "expense",
+    "amount": 120,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-04T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-9vb9sim",
+    "type": "expense",
+    "amount": 54,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-03T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-0xzgtaf",
+    "type": "expense",
+    "amount": 62,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-01-26T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-r11vjth",
+    "type": "income",
+    "amount": 880,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-01-15T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360477-18qg3zu",
+    "type": "income",
+    "amount": 1319,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-01-02T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-1"
+  },
+  {
+    "id": "demo-1781172360477-6a79reh",
+    "type": "income",
+    "amount": 2993,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-01-14T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-1"
+  },
+  {
+    "id": "demo-1781172360477-csmi0yo",
+    "type": "expense",
+    "amount": 109,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-01-19T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-glmtu4c",
+    "type": "expense",
+    "amount": 104,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-01-20T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-8rpnlfc",
+    "type": "expense",
+    "amount": 43,
+    "categoryId": "cat-b4",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-01-01T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-a0n8moh",
+    "type": "income",
+    "amount": 5000,
+    "categoryId": "cat-1",
+    "accountId": "acc-1",
+    "description": "Monthly Salary",
+    "date": "2026-01-31T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-zyzpo5s",
+    "type": "expense",
+    "amount": 1500,
+    "categoryId": "cat-5a",
+    "accountId": "acc-1",
+    "description": "Apartment Rent",
+    "date": "2026-02-01T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-quw1u3b",
+    "type": "expense",
+    "amount": 79,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-25T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-syrkfj2",
+    "type": "expense",
+    "amount": 82,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-27T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-dl8b18k",
+    "type": "expense",
+    "amount": 76,
+    "categoryId": "cat-7",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-13T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-7m2h11l",
+    "type": "expense",
+    "amount": 70,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-25T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-j1k6y61",
+    "type": "expense",
+    "amount": 110,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-20T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-m5gyrxa",
+    "type": "expense",
+    "amount": 49,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-06T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-eujdthf",
+    "type": "expense",
+    "amount": 25,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-04T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-9908yur",
+    "type": "expense",
+    "amount": 25,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-11T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-vnb280v",
+    "type": "expense",
+    "amount": 49,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-16T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-4275p3w",
+    "type": "expense",
+    "amount": 61,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-24T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-pu5a5lu",
+    "type": "expense",
+    "amount": 72,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-08T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-g90v0ef",
+    "type": "expense",
+    "amount": 75,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-17T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-ff1v8bp",
+    "type": "expense",
+    "amount": 17,
+    "categoryId": "cat-7",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-19T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-kpfzsul",
+    "type": "expense",
+    "amount": 46,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-14T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-5yv68qj",
+    "type": "expense",
+    "amount": 81,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-18T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-rz9lcrw",
+    "type": "income",
+    "amount": 1409,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-02-07T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360477-224bgrb",
+    "type": "income",
+    "amount": 3074,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-02-11T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360477-4w54ssw",
+    "type": "income",
+    "amount": 3266,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-02-09T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360477-u65s6kr",
+    "type": "expense",
+    "amount": 41,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-02-06T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-bd4ixrn",
+    "type": "expense",
+    "amount": 292,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-02-18T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-o8ucooy",
+    "type": "expense",
+    "amount": 96,
+    "categoryId": "cat-b4",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-02-07T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-5ochdck",
+    "type": "expense",
+    "amount": 292,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-02-24T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-gftoxwn",
+    "type": "income",
+    "amount": 5000,
+    "categoryId": "cat-1",
+    "accountId": "acc-1",
+    "description": "Monthly Salary",
+    "date": "2026-02-28T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-0zagnb9",
+    "type": "expense",
+    "amount": 1500,
+    "categoryId": "cat-5a",
+    "accountId": "acc-1",
+    "description": "Apartment Rent",
+    "date": "2026-03-01T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-g6pludb",
+    "type": "expense",
+    "amount": 76,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-19T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-1snnnpp",
+    "type": "expense",
+    "amount": 19,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-15T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-k6ouwaz",
+    "type": "expense",
+    "amount": 70,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-13T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-nq9psig",
+    "type": "expense",
+    "amount": 60,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-30T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-43n8u6u",
+    "type": "expense",
+    "amount": 113,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-25T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-gw1ri1d",
+    "type": "expense",
+    "amount": 22,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-06T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-egbplqd",
+    "type": "expense",
+    "amount": 117,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-17T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-408fdhi",
+    "type": "expense",
+    "amount": 54,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-10T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-huu9wvk",
+    "type": "expense",
+    "amount": 106,
+    "categoryId": "cat-7",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-18T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-8rswout",
+    "type": "expense",
+    "amount": 56,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-06T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-v489q1z",
+    "type": "expense",
+    "amount": 17,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-16T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-zftcpnx",
+    "type": "expense",
+    "amount": 16,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-10T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-do6o80w",
+    "type": "expense",
+    "amount": 47,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-30T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-ezpnxgf",
+    "type": "expense",
+    "amount": 114,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-03-04T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-f5rojad",
+    "type": "expense",
+    "amount": 76,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-02-28T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-o5deqmt",
+    "type": "income",
+    "amount": 2482,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-03-18T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-1"
+  },
+  {
+    "id": "demo-1781172360477-bpfetsx",
+    "type": "income",
+    "amount": 1797,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-03-20T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360477-zg0h98w",
+    "type": "expense",
+    "amount": 101,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-02-28T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-pq74jjy",
+    "type": "expense",
+    "amount": 31,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-03-28T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-1fy2gya",
+    "type": "expense",
+    "amount": 186,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-03-23T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-l83t414",
+    "type": "expense",
+    "amount": 129,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-03-08T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-88u2vkd",
+    "type": "expense",
+    "amount": 263,
+    "categoryId": "cat-b4",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-03-01T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-48hhudp",
+    "type": "income",
+    "amount": 5000,
+    "categoryId": "cat-1",
+    "accountId": "acc-1",
+    "description": "Monthly Salary",
+    "date": "2026-03-31T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-3uhnu7g",
+    "type": "expense",
+    "amount": 1500,
+    "categoryId": "cat-5a",
+    "accountId": "acc-1",
+    "description": "Apartment Rent",
+    "date": "2026-04-01T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-ewd8h4a",
+    "type": "expense",
+    "amount": 60,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-18T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-lf35ja6",
+    "type": "expense",
+    "amount": 77,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-14T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-fun8mr6",
+    "type": "expense",
+    "amount": 78,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-07T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-cavc4q1",
+    "type": "expense",
+    "amount": 115,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-19T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-fub93t7",
+    "type": "expense",
+    "amount": 51,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-28T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-ib3l9ll",
+    "type": "expense",
+    "amount": 115,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-25T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-efbws3l",
+    "type": "expense",
+    "amount": 82,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-15T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-ilwgdnt",
+    "type": "expense",
+    "amount": 80,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-06T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-nrqxtmv",
+    "type": "expense",
+    "amount": 75,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-25T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-mxa59cn",
+    "type": "expense",
+    "amount": 105,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-23T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-q1i3806",
+    "type": "expense",
+    "amount": 70,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-27T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-96tlstt",
+    "type": "expense",
+    "amount": 62,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-09T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-vtap810",
+    "type": "expense",
+    "amount": 116,
+    "categoryId": "cat-7",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-28T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-5d6yvxo",
+    "type": "expense",
+    "amount": 81,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-06T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-90vffd7",
+    "type": "expense",
+    "amount": 60,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-04-05T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-256yr29",
+    "type": "income",
+    "amount": 1397,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-04-15T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360477-37ca3zw",
+    "type": "income",
+    "amount": 3446,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-04-21T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-1"
+  },
+  {
+    "id": "demo-1781172360477-wmsbsgr",
+    "type": "income",
+    "amount": 1873,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-04-09T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360477-7awu8zs",
+    "type": "expense",
+    "amount": 262,
+    "categoryId": "cat-b4",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-04-07T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-khd4f45",
+    "type": "expense",
+    "amount": 272,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-04-04T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-yhhcxld",
+    "type": "expense",
+    "amount": 146,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-04-17T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-7dw77e5",
+    "type": "expense",
+    "amount": 45,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-04-21T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-j7nrtux",
+    "type": "expense",
+    "amount": 24,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-03-31T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-qfib026",
+    "type": "expense",
+    "amount": 126,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-04-26T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-7atlky5",
+    "type": "expense",
+    "amount": 33,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-04-19T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-ipt59lb",
+    "type": "income",
+    "amount": 5000,
+    "categoryId": "cat-1",
+    "accountId": "acc-1",
+    "description": "Monthly Salary",
+    "date": "2026-04-30T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-yrvy6di",
+    "type": "expense",
+    "amount": 1500,
+    "categoryId": "cat-5a",
+    "accountId": "acc-1",
+    "description": "Apartment Rent",
+    "date": "2026-05-01T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-o7gv6k0",
+    "type": "expense",
+    "amount": 74,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-30T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-99rx5qb",
+    "type": "expense",
+    "amount": 84,
+    "categoryId": "cat-7",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-21T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-3cjw1aw",
+    "type": "expense",
+    "amount": 113,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-01T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-c9gbc96",
+    "type": "expense",
+    "amount": 81,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-12T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-uw0zulq",
+    "type": "expense",
+    "amount": 35,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-09T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-02ttepx",
+    "type": "expense",
+    "amount": 54,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-11T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-uldravk",
+    "type": "expense",
+    "amount": 23,
+    "categoryId": "cat-7",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-23T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-95iys49",
+    "type": "expense",
+    "amount": 60,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-03T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-seimoq5",
+    "type": "expense",
+    "amount": 93,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-20T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-n0i7rlr",
+    "type": "expense",
+    "amount": 71,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-29T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-fty8viw",
+    "type": "expense",
+    "amount": 107,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-19T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-vwwkp7z",
+    "type": "expense",
+    "amount": 96,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-06T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-lsi22oa",
+    "type": "expense",
+    "amount": 69,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-29T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-y4a98k1",
+    "type": "expense",
+    "amount": 81,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-07T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-xn6pkj9",
+    "type": "expense",
+    "amount": 88,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-05-08T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-anlx47a",
+    "type": "income",
+    "amount": 1627,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-05-25T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-1"
+  },
+  {
+    "id": "demo-1781172360477-ljn9xau",
+    "type": "income",
+    "amount": 1103,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-05-13T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-1"
+  },
+  {
+    "id": "demo-1781172360477-ylze8c7",
+    "type": "expense",
+    "amount": 145,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-05-27T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-gjtrmvv",
+    "type": "expense",
+    "amount": 59,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-04-30T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-usiivt3",
+    "type": "expense",
+    "amount": 126,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-05-07T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-49igwvm",
+    "type": "expense",
+    "amount": 262,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-05-16T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360477-gpi9dzm",
+    "type": "income",
+    "amount": 5000,
+    "categoryId": "cat-1",
+    "accountId": "acc-1",
+    "description": "Monthly Salary",
+    "date": "2026-05-31T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-2ch5dbt",
+    "type": "expense",
+    "amount": 1500,
+    "categoryId": "cat-5a",
+    "accountId": "acc-1",
+    "description": "Apartment Rent",
+    "date": "2026-06-01T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-0ywdm3v",
+    "type": "expense",
+    "amount": 25,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-24T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-svdlpss",
+    "type": "expense",
+    "amount": 90,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-06T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-bsrz32s",
+    "type": "expense",
+    "amount": 97,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-12T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-hadeeoa",
+    "type": "expense",
+    "amount": 106,
+    "categoryId": "cat-7",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-19T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-vjee6c1",
+    "type": "expense",
+    "amount": 68,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-15T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-bdu132k",
+    "type": "expense",
+    "amount": 111,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-28T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-etyr5um",
+    "type": "expense",
+    "amount": 78,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-17T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-ii5d7y9",
+    "type": "expense",
+    "amount": 108,
+    "categoryId": "cat-10",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-05T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-zh55w6i",
+    "type": "expense",
+    "amount": 96,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-24T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-llatvrx",
+    "type": "expense",
+    "amount": 48,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-25T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360477-czm9pfq",
+    "type": "expense",
+    "amount": 56,
+    "categoryId": "cat-4b",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-28T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360478-yqcc4dp",
+    "type": "expense",
+    "amount": 107,
+    "categoryId": "cat-6",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-23T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360478-s4cbzd7",
+    "type": "expense",
+    "amount": 77,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-14T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360478-6zzp995",
+    "type": "expense",
+    "amount": 98,
+    "categoryId": "cat-4a",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-15T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360478-j182k0h",
+    "type": "expense",
+    "amount": 33,
+    "categoryId": "cat-9",
+    "accountId": "acc-3",
+    "description": "Misc Expense",
+    "date": "2026-06-17T18:30:00.000Z",
+    "isBusiness": false
+  },
+  {
+    "id": "demo-1781172360478-gd0e0mv",
+    "type": "income",
+    "amount": 1271,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-06-07T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360478-ditc65m",
+    "type": "income",
+    "amount": 2198,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-06-17T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-1"
+  },
+  {
+    "id": "demo-1781172360478-myqd2fj",
+    "type": "income",
+    "amount": 3136,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-06-09T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360478-yzeskrw",
+    "type": "income",
+    "amount": 2889,
+    "categoryId": "cat-b1",
+    "accountId": "acc-b1",
+    "description": "Client Payment",
+    "date": "2026-06-02T18:30:00.000Z",
+    "isBusiness": true,
+    "revenueSourceId": "src-2"
+  },
+  {
+    "id": "demo-1781172360478-rh73jk1",
+    "type": "expense",
+    "amount": 151,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-06-29T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360478-4xw62rc",
+    "type": "expense",
+    "amount": 112,
+    "categoryId": "cat-b2",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-06-03T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360478-17hfksh",
+    "type": "expense",
+    "amount": 146,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-06-11T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360478-uyhmcww",
+    "type": "expense",
+    "amount": 112,
+    "categoryId": "cat-b4",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-06-13T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360478-77y2k8b",
+    "type": "expense",
+    "amount": 68,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-06-20T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360478-mud2w6a",
+    "type": "expense",
+    "amount": 91,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-06-24T18:30:00.000Z",
+    "isBusiness": true
+  },
+  {
+    "id": "demo-1781172360478-0bvi63w",
+    "type": "expense",
+    "amount": 50,
+    "categoryId": "cat-b3",
+    "accountId": "acc-b1",
+    "description": "Business Expense",
+    "date": "2026-06-12T18:30:00.000Z",
+    "isBusiness": true
+  }
+]

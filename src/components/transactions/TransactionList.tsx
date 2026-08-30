@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Pencil, Trash2, TrendingUp, TrendingDown, Users } from 'lucide-react';
 import { useApp, formatCurrency } from '@/context/AppContext';
 import { Transaction } from '@/lib/types';
 
@@ -128,8 +128,24 @@ export function TransactionList({ transactions, onEdit, selectedIds, onToggleSel
                         )}
                         {cat?.name ?? (t.categoryId === 'transfer' ? 'Transfer' : 'Multiple / Unknown')}
                         {t.splitCategoryIds && t.splitCategoryIds.length > 0 && ` (Split)`}
+                        <span style={{ margin: '0 8px' }}>•</span>
+                        {t.isBusiness ? (
+                          <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10, fontWeight: 600 }}>Business</span>
+                        ) : (
+                          <span style={{ fontSize: 10, background: 'var(--surface-highlight)', color: 'var(--text-secondary)', padding: '2px 6px', borderRadius: 10, border: '1px solid var(--border)' }}>Personal</span>
+                        )}
+                        {t.revenueSourceId && state.revenueSources.find(s => s.id === t.revenueSourceId) && (
+                          <span style={{ fontSize: 10, background: 'var(--primary)', color: '#fff', padding: '2px 6px', borderRadius: 10, marginLeft: 6 }}>
+                            {state.revenueSources.find(s => s.id === t.revenueSourceId)?.name}
+                          </span>
+                        )}
+                        {t.splitWith && t.splitWith.length > 0 && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, background: 'var(--income-subtle)', color: 'var(--income)', padding: '2px 6px', borderRadius: 10, border: '1px solid var(--income)' }}>
+                            <Users size={10} /> Shared
+                          </span>
+                        )}
                         {t.tags && t.tags.length > 0 && ` • ${t.tags.join(', ')}`}
-                        {t.freelanceData && ` • 💼 ${t.freelanceData.clientName} (${t.freelanceData.projectName})`}
+
                         {t.receiptUrl && ` • 📎 Receipt`}
                         {t.notes && <><span style={{ margin: '0 4px' }}>•</span>{renderWithTags(t.notes, onTagClick)}</>}
                       </div>

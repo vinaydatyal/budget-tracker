@@ -19,7 +19,7 @@ import Link from 'next/link';
 const PAGE_SIZE = 20;
 
 export default function TransactionsPage() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, personalTransactions } = useApp();
   const { toast } = useToast();
 
   const [showForm, setShowForm] = useState(false);
@@ -31,6 +31,7 @@ export default function TransactionsPage() {
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
+  const [hubFilter, setHubFilter] = useState<'all' | 'personal' | 'business'>('personal');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [accountFilter, setAccountFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
@@ -46,6 +47,8 @@ export default function TransactionsPage() {
 
   const filtered = useMemo(() => {
     return state.transactions.filter(t => {
+      if (hubFilter === 'personal' && t.isBusiness) return false;
+      if (hubFilter === 'business' && !t.isBusiness) return false;
       if (typeFilter !== 'all' && t.type !== typeFilter) return false;
       if (categoryFilter && t.categoryId !== categoryFilter) return false;
       if (accountFilter && t.accountId !== accountFilter) return false;
@@ -67,7 +70,7 @@ export default function TransactionsPage() {
       }
       return true;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [state.transactions, search, typeFilter, categoryFilter, accountFilter, monthFilter, dateFrom, dateTo, amountMin, amountMax, tagFilter]);
+  }, [state.transactions, hubFilter, search, typeFilter, categoryFilter, accountFilter, monthFilter, dateFrom, dateTo, amountMin, amountMax, tagFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -162,6 +165,7 @@ export default function TransactionsPage() {
       <FilterBar
         search={search} setSearch={wrapSet(setSearch)}
         typeFilter={typeFilter} setTypeFilter={wrapSet(setTypeFilter)}
+        hubFilter={hubFilter} setHubFilter={wrapSet(setHubFilter)}
         categoryFilter={categoryFilter} setCategoryFilter={wrapSet(setCategoryFilter)}
         accountFilter={accountFilter} setAccountFilter={wrapSet(setAccountFilter)}
         monthFilter={monthFilter} setMonthFilter={wrapSet(setMonthFilter)}

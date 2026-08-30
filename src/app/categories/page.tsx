@@ -24,6 +24,7 @@ export default function CategoriesPage() {
   const { state, addCategory, updateCategory, deleteCategory } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
+  const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
 
   const [name, setName] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
@@ -32,17 +33,18 @@ export default function CategoriesPage() {
   const [parentId, setParentId] = useState<string>('');
   const [monthlyBudget, setMonthlyBudget] = useState<string>('');
   const [budgetRollover, setBudgetRollover] = useState<boolean>(false);
+  const [isBusiness, setIsBusiness] = useState<boolean>(false);
   const [error, setError] = useState('');
 
   function openNew() {
     setEditing(null);
-    setName(''); setColor(PRESET_COLORS[0]); setIcon(PRESET_EMOJIS[0]); setType('expense'); setParentId(''); setMonthlyBudget(''); setBudgetRollover(false); setError('');
+    setName(''); setColor(PRESET_COLORS[0]); setIcon(PRESET_EMOJIS[0]); setType('expense'); setParentId(''); setMonthlyBudget(''); setBudgetRollover(false); setIsBusiness(activeTab === 'business'); setError('');
     setShowForm(true);
   }
 
   function openEdit(cat: Category) {
     setEditing(cat);
-    setName(cat.name); setColor(cat.color); setIcon(cat.icon); setType(cat.type as ModeType); setParentId(cat.parentId || ''); setMonthlyBudget(cat.monthlyBudget ? String(cat.monthlyBudget) : ''); setBudgetRollover(!!cat.budgetRollover); setError('');
+    setName(cat.name); setColor(cat.color); setIcon(cat.icon); setType(cat.type as ModeType); setParentId(cat.parentId || ''); setMonthlyBudget(cat.monthlyBudget ? String(cat.monthlyBudget) : ''); setBudgetRollover(!!cat.budgetRollover); setIsBusiness(!!cat.isBusiness); setError('');
     setShowForm(true);
   }
 
@@ -54,15 +56,17 @@ export default function CategoriesPage() {
       name: name.trim(), color, icon, type, 
       parentId: parentId || undefined,
       monthlyBudget: monthlyBudget ? parseFloat(monthlyBudget) : undefined,
-      budgetRollover
+      budgetRollover,
+      isBusiness
     };
     if (editing) updateCategory({ ...payload, id: editing.id });
     else addCategory(payload);
     setShowForm(false);
   }
 
-  const incomeCategories = state.categories.filter(c => c.type === 'income' || c.type === 'both');
-  const expenseCategories = state.categories.filter(c => c.type === 'expense' || c.type === 'both');
+  const filteredCategories = state.categories.filter(c => (activeTab === 'business' ? !!c.isBusiness : !c.isBusiness));
+  const incomeCategories = filteredCategories.filter(c => c.type === 'income' || c.type === 'both');
+  const expenseCategories = filteredCategories.filter(c => c.type === 'expense' || c.type === 'both');
 
   return (
     <PageWrapper className="page-body">
@@ -75,6 +79,23 @@ export default function CategoriesPage() {
           <Plus size={16} /> New Category
         </button>
       </div>
+
+      {state.preferences.enableBusinessMode && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+          <button 
+            className={`btn ${activeTab === 'personal' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('personal')}
+          >
+            Personal Categories
+          </button>
+          <button 
+            className={`btn ${activeTab === 'business' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('business')}
+          >
+            Business Categories
+          </button>
+        </div>
+      )}
 
       {/* Income categories */}
       <div className="section-title" style={{ color: 'var(--income)' }}>
@@ -142,6 +163,15 @@ export default function CategoriesPage() {
                   ))}
                 </div>
               </div>
+
+              {state.preferences.enableBusinessMode && (
+                <div className="form-group" style={{ background: 'var(--bg-card-hover)', padding: 12, borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={isBusiness} onChange={e => setIsBusiness(e.target.checked)} />
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>This is a Business Category</span>
+                  </label>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">Parent Category (Optional)</label>

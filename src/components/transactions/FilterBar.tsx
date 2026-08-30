@@ -9,6 +9,8 @@ interface Props {
   setSearch: (v: string) => void;
   typeFilter: 'all' | 'income' | 'expense' | 'transfer';
   setTypeFilter: (v: 'all' | 'income' | 'expense' | 'transfer') => void;
+  hubFilter?: 'all' | 'personal' | 'business';
+  setHubFilter?: (v: 'all' | 'personal' | 'business') => void;
   categoryFilter: string;
   setCategoryFilter: (v: string) => void;
   accountFilter: string;
@@ -30,6 +32,7 @@ interface Props {
 export function FilterBar({
   search, setSearch,
   typeFilter, setTypeFilter,
+  hubFilter, setHubFilter,
   categoryFilter, setCategoryFilter,
   accountFilter, setAccountFilter,
   monthFilter, setMonthFilter,
@@ -89,6 +92,24 @@ export function FilterBar({
             >{t}</button>
           ))}
         </div>
+
+        {setHubFilter && state.preferences.enableBusinessMode && (
+          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-input)', borderRadius: 8, padding: 3, flexShrink: 0 }}>
+            {(['all', 'personal', 'business'] as const).map(h => (
+              <button
+                key={h}
+                onClick={() => setHubFilter(h)}
+                style={{
+                  padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: 'none', transition: 'all 0.15s',
+                  background: hubFilter === h ? 'var(--accent)' : 'transparent',
+                  color: hubFilter === h ? '#fff' : 'var(--text-muted)',
+                  textTransform: 'capitalize',
+                }}
+              >{h}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Row 2: Category, Account, Month, Tag */}

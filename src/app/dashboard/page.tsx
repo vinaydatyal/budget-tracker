@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { format, subMonths, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { format, subDays, subMonths, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { useApp } from '@/context/AppContext';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { SummaryCards } from '@/components/dashboard/SummaryCards';
@@ -16,34 +16,94 @@ import { InsightsPanel } from '@/components/dashboard/InsightsPanel';
 import { CashFlowSankey } from '@/components/dashboard/CashFlowSankey';
 import { AccountsWidget } from '@/components/dashboard/AccountsWidget';
 import { TransactionsWidget } from '@/components/dashboard/TransactionsWidget';
-import { Settings2, X, Plus, Filter } from 'lucide-react';
+import { AchievementsShowcase } from '@/components/dashboard/AchievementsShowcase';
+import { AiInsightsWidget } from '@/components/dashboard/AiInsightsWidget';
+import { AiAdvisorChat } from '@/components/dashboard/AiAdvisorChat';
+import { Settings2, X, Plus, Filter, MessageSquareText } from 'lucide-react';
 // @ts-ignore
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
 import type { Layout } from 'react-grid-layout';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-type GlobalDatePreset = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
+type GlobalDatePreset = '7D' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
 
 const DEFAULT_LAYOUTS = {
   lg: [
-    { i: 'insights', x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 },
-    { i: 'summary', x: 0, y: 3, w: 7, h: 4, minW: 6, minH: 2 },
-    { i: 'net-worth', x: 7, y: 3, w: 5, h: 4, minW: 4, minH: 3 },
-    { i: 'cash-flow', x: 0, y: 7, w: 7, h: 5, minW: 5, minH: 4 },
-    { i: 'income-expense', x: 7, y: 7, w: 5, h: 5, minW: 4, minH: 4 },
-    { i: 'transactions', x: 0, y: 12, w: 7, h: 6, minW: 4, minH: 4 },
-    { i: 'spending', x: 7, y: 12, w: 5, h: 6, minW: 3, minH: 4 },
-    { i: 'accounts', x: 0, y: 18, w: 7, h: 5, minW: 4, minH: 4 },
-    { i: 'forecast', x: 7, y: 18, w: 5, h: 5, minW: 4, minH: 4 },
-    { i: 'budgets', x: 0, y: 23, w: 7, h: 5, minW: 4, minH: 4 },
-    { i: 'bills', x: 7, y: 23, w: 5, h: 5, minW: 3, minH: 4 },
+    { i: 'summary', x: 0, y: 0, w: 8, h: 3, minW: 6, minH: 2 },
+    { i: 'net-worth', x: 8, y: 0, w: 4, h: 3, minW: 3, minH: 3 },
+    { i: 'insights', x: 0, y: 3, w: 12, h: 3, minW: 6, minH: 2 },
+    { i: 'achievements', x: 0, y: 6, w: 12, h: 3, minW: 6, minH: 3 },
+    { i: 'cash-flow', x: 0, y: 9, w: 6, h: 5, minW: 5, minH: 4 },
+    { i: 'income-expense', x: 6, y: 9, w: 6, h: 5, minW: 4, minH: 4 },
+    { i: 'transactions', x: 0, y: 14, w: 6, h: 6, minW: 4, minH: 4 },
+    { i: 'spending', x: 6, y: 14, w: 6, h: 6, minW: 3, minH: 4 },
+    { i: 'accounts', x: 0, y: 20, w: 6, h: 5, minW: 4, minH: 4 },
+    { i: 'forecast', x: 6, y: 20, w: 6, h: 5, minW: 4, minH: 4 },
+    { i: 'budgets', x: 0, y: 25, w: 6, h: 5, minW: 4, minH: 4 },
+    { i: 'bills', x: 6, y: 25, w: 6, h: 5, minW: 3, minH: 4 },
   ],
+  md: [
+    { i: 'summary', x: 0, y: 0, w: 6, h: 4 },
+    { i: 'net-worth', x: 6, y: 0, w: 4, h: 4 },
+    { i: 'insights', x: 0, y: 4, w: 10, h: 3 },
+    { i: 'achievements', x: 0, y: 7, w: 10, h: 4 },
+    { i: 'cash-flow', x: 0, y: 15, w: 5, h: 5 },
+    { i: 'income-expense', x: 5, y: 15, w: 5, h: 5 },
+    { i: 'transactions', x: 0, y: 20, w: 5, h: 6 },
+    { i: 'spending', x: 5, y: 20, w: 5, h: 6 },
+    { i: 'accounts', x: 0, y: 26, w: 5, h: 5 },
+    { i: 'forecast', x: 5, y: 26, w: 5, h: 5 },
+    { i: 'budgets', x: 0, y: 31, w: 5, h: 5 },
+    { i: 'bills', x: 5, y: 31, w: 5, h: 5 },
+  ],
+  sm: [
+    { i: 'summary', x: 0, y: 0, w: 6, h: 5 },
+    { i: 'net-worth', x: 0, y: 5, w: 6, h: 4 },
+    { i: 'insights', x: 0, y: 9, w: 6, h: 3 },
+    { i: 'achievements', x: 0, y: 12, w: 6, h: 4 },
+    { i: 'cash-flow', x: 0, y: 16, w: 6, h: 5 },
+    { i: 'income-expense', x: 0, y: 17, w: 6, h: 5 },
+    { i: 'transactions', x: 0, y: 22, w: 6, h: 6 },
+    { i: 'spending', x: 0, y: 28, w: 6, h: 6 },
+    { i: 'accounts', x: 0, y: 34, w: 6, h: 5 },
+    { i: 'forecast', x: 0, y: 39, w: 6, h: 5 },
+    { i: 'budgets', x: 0, y: 44, w: 6, h: 5 },
+    { i: 'bills', x: 0, y: 49, w: 6, h: 5 },
+  ],
+  xs: [
+    { i: 'insights', x: 0, y: 0, w: 4, h: 3 },
+    { i: 'summary', x: 0, y: 3, w: 4, h: 7 },
+    { i: 'net-worth', x: 0, y: 10, w: 4, h: 4 },
+    { i: 'cash-flow', x: 0, y: 14, w: 4, h: 5 },
+    { i: 'income-expense', x: 0, y: 19, w: 4, h: 5 },
+    { i: 'transactions', x: 0, y: 24, w: 4, h: 6 },
+    { i: 'spending', x: 0, y: 30, w: 4, h: 6 },
+    { i: 'accounts', x: 0, y: 36, w: 4, h: 5 },
+    { i: 'forecast', x: 0, y: 41, w: 4, h: 5 },
+    { i: 'budgets', x: 0, y: 46, w: 4, h: 5 },
+    { i: 'bills', x: 0, y: 51, w: 4, h: 5 },
+  ],
+  xxs: [
+    { i: 'insights', x: 0, y: 0, w: 2, h: 3 },
+    { i: 'summary', x: 0, y: 3, w: 2, h: 8 },
+    { i: 'net-worth', x: 0, y: 11, w: 2, h: 4 },
+    { i: 'achievements', x: 0, y: 15, w: 2, h: 4 },
+    { i: 'cash-flow', x: 0, y: 19, w: 2, h: 5 },
+    { i: 'income-expense', x: 0, y: 24, w: 2, h: 5 },
+    { i: 'transactions', x: 0, y: 29, w: 2, h: 6 },
+    { i: 'spending', x: 0, y: 35, w: 2, h: 6 },
+    { i: 'accounts', x: 0, y: 41, w: 2, h: 5 },
+    { i: 'forecast', x: 0, y: 46, w: 2, h: 5 },
+    { i: 'budgets', x: 0, y: 51, w: 2, h: 5 },
+    { i: 'bills', x: 0, y: 56, w: 2, h: 5 },
+  ]
 };
 
 const WIDGET_NAMES: Record<string, string> = {
   'net-worth': 'Net Worth Hero',
   'insights': 'Smart Insights',
+  'achievements': 'Achievements Showcase',
   'summary': 'Summary Cards',
   'cash-flow': 'Cash Flow Sankey',
   'spending': 'Spending Breakdowns',
@@ -56,7 +116,7 @@ const WIDGET_NAMES: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, personalTransactions, personalAccounts, personalCategories } = useApp();
   
   // Global Filters State
   const [dateRangePreset, setDateRangePreset] = useState<GlobalDatePreset>('1M');
@@ -65,6 +125,7 @@ export default function DashboardPage() {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const today = new Date();
 
@@ -77,7 +138,10 @@ export default function DashboardPage() {
       start = new Date(customStart);
       end = new Date(customEnd);
     } else {
-      if (dateRangePreset === '1M') {
+      if (dateRangePreset === '7D') {
+        start = subDays(today, 6);
+        end = today;
+      } else if (dateRangePreset === '1M') {
         start = startOfMonth(today);
         end = endOfMonth(today);
       } else if (dateRangePreset === '3M') {
@@ -101,7 +165,7 @@ export default function DashboardPage() {
   }, [dateRangePreset, customStart, customEnd]);
 
   const recentTxns = useMemo(() => {
-    let txns = state.transactions.filter(t => {
+    let txns = personalTransactions.filter(t => {
       const d = new Date(t.date);
       return d >= activeRange.start && d <= activeRange.end;
     });
@@ -112,19 +176,20 @@ export default function DashboardPage() {
     return txns
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
-  }, [state.transactions, activeRange, selectedAccounts, selectedCategories]);
+  }, [personalTransactions, activeRange, selectedAccounts, selectedCategories]);
 
   const widgets: Record<string, React.ReactNode> = {
-    'net-worth': <NetWorthCard activeRange={activeRange} accountIds={selectedAccounts} />,
-    'insights': <InsightsPanel />,
-    'summary': <SummaryCards activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
-    'cash-flow': <CashFlowSankey activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
-    'spending': <SpendingDonut activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
-    'forecast': <ForecastChart />,
-    'accounts': <AccountsWidget selectedAccounts={selectedAccounts} />,
-    'income-expense': <IncomeExpenseChart activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
-    'budgets': <BudgetProgressBars activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
-    'transactions': <TransactionsWidget recentTxns={recentTxns} />,
+    'net-worth': <NetWorthCard transactions={state.transactions} accounts={state.accounts} activeRange={activeRange} accountIds={selectedAccounts} />, // Total Net Worth uses global state
+    'insights': <InsightsPanel transactions={personalTransactions} activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
+    'achievements': <AchievementsShowcase />,
+    'summary': <SummaryCards transactions={personalTransactions} activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
+    'cash-flow': <CashFlowSankey transactions={personalTransactions} activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
+    'spending': <SpendingDonut transactions={personalTransactions} activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
+    'forecast': <ForecastChart transactions={personalTransactions} accounts={personalAccounts} isBusinessMode={false} />, // Forecast uses personal
+    'accounts': <AccountsWidget transactions={personalTransactions} accounts={personalAccounts} selectedAccounts={selectedAccounts} />,
+    'income-expense': <IncomeExpenseChart transactions={personalTransactions} activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
+    'budgets': <BudgetProgressBars transactions={personalTransactions} categories={personalCategories} activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />,
+    'transactions': <TransactionsWidget transactions={recentTxns.length > 0 ? recentTxns : personalTransactions} />,
     'bills': <UpcomingBills />
   };
 
@@ -156,15 +221,24 @@ export default function DashboardPage() {
             {isEditMode ? 'Done Editing' : 'Customize Layout'}
           </button>
           {isEditMode && (
-            <button className="btn btn-secondary" onClick={() => dispatch({ type: 'UPDATE_DASHBOARD_LAYOUT', payload: { layouts: DEFAULT_LAYOUTS } })}>
+            <button className="btn btn-secondary" onClick={() => dispatch({ type: 'UPDATE_DASHBOARD_LAYOUT', payload: { layouts: DEFAULT_LAYOUTS, resetWidgets: true } })}>
               Reset to Default Layout
             </button>
           )}
+          <button 
+            className="btn btn-primary"
+            style={{ background: 'var(--accent)' }}
+            onClick={() => setIsChatOpen(true)}
+          >
+            <MessageSquareText size={16} style={{ marginRight: 8 }} />
+            Ask Kubera
+          </button>
         </div>
       </div>
 
       {/* Global Filter Bar */}
       <div style={{
+        position: 'relative', zIndex: 100,
         display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 24,
         padding: '16px 20px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)'
       }}>
@@ -176,7 +250,7 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>Date Range</label>
           <div style={{ display: 'flex', gap: 4, background: 'var(--bg-input)', padding: 4, borderRadius: 8 }}>
-            {(['1M', '3M', '6M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as GlobalDatePreset[]).map(p => (
+            {(['7D', '1M', '3M', '6M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as GlobalDatePreset[]).map(p => (
               <button
                 key={p}
                 onClick={() => setDateRangePreset(p)}
@@ -208,7 +282,7 @@ export default function DashboardPage() {
         <MultiSelect
           label="Accounts"
           placeholder="All Accounts"
-          options={state.accounts.map(a => ({ id: a.id, label: a.name, color: a.color }))}
+          options={personalAccounts.map(a => ({ id: a.id, label: a.name, color: a.color }))}
           selectedIds={selectedAccounts}
           onChange={setSelectedAccounts}
         />
@@ -216,11 +290,13 @@ export default function DashboardPage() {
         <MultiSelect
           label="Categories"
           placeholder="All Categories"
-          options={state.categories.map(c => ({ id: c.id, label: <>{c.icon} {c.name}</>, color: c.color }))}
+          options={personalCategories.map(c => ({ id: c.id, label: <>{c.icon} {c.name}</>, color: c.color }))}
           selectedIds={selectedCategories}
           onChange={setSelectedCategories}
         />
       </div>
+
+      <AiInsightsWidget />
 
       {/* Hidden Widgets Drawer (Only in Edit Mode) */}
       {isEditMode && hiddenWidgets.length > 0 && (
@@ -286,6 +362,8 @@ export default function DashboardPage() {
           ))}
         </ResponsiveGridLayout>
       </div>
+      {/* AI Advisor Chat Drawer */}
+      <AiAdvisorChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </PageWrapper>
   );
 }

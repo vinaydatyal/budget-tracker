@@ -4,7 +4,9 @@ import { useApp, formatCurrency } from '@/context/AppContext';
 import Link from 'next/link';
 import { ArrowRight, CreditCard } from 'lucide-react';
 
-export function AccountsWidget({ selectedAccounts }: { selectedAccounts: string[] }) {
+import { Transaction, Account } from '@/lib/types';
+
+export function AccountsWidget({ selectedAccounts, transactions, accounts }: { selectedAccounts: string[], transactions: Transaction[], accounts: Account[] }) {
   const { state } = useApp();
 
   return (
@@ -16,8 +18,8 @@ export function AccountsWidget({ selectedAccounts }: { selectedAccounts: string[
         </Link>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
-        {state.accounts.filter(a => selectedAccounts.length === 0 || selectedAccounts.includes(a.id)).map(acc => {
-          const bal = state.transactions.reduce((s, t) => {
+        {accounts.filter(a => selectedAccounts.length === 0 || selectedAccounts.includes(a.id)).map(acc => {
+          const bal = transactions.reduce((s, t) => {
             if (t.accountId === acc.id) return t.type === 'income' ? s + t.amount : s - t.amount;
             if (t.type === 'transfer' && t.toAccountId === acc.id) return s + t.amount;
             return s;

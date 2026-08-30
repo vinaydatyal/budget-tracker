@@ -16,9 +16,10 @@ import {
 } from 'lucide-react';
 import { TransactionList } from '@/components/transactions/TransactionList';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
+import { CashFlowSankey } from '@/components/dashboard/CashFlowSankey';
 
-type Tab = 'overview' | 'trends' | 'categories' | 'freelance';
-type GlobalDatePreset = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
+type Tab = 'overview' | 'trends' | 'categories' | 'money-flow';
+type GlobalDatePreset = '7D' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, sub, color, icon: Icon, trend }: {
@@ -354,9 +355,8 @@ function CashFlowVisualizer({ income, expenses, taxRate }: { income: number; exp
     </div>
   );
 }
-
 export default function ReportsPage() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, personalTransactions, personalAccounts, personalCategories } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -382,7 +382,12 @@ export default function ReportsPage() {
       prevEnd = new Date(start.getTime() - 24 * 3600 * 1000);
       prevStart = new Date(prevEnd.getTime() - diff);
     } else {
-      if (dateRangePreset === '1M') {
+      if (dateRangePreset === '7D') {
+        start = subDays(today, 6);
+        end = today;
+        prevStart = subDays(start, 7);
+        prevEnd = subDays(end, 7);
+      } else if (dateRangePreset === '1M') {
         start = startOfMonth(today);
         end = endOfMonth(today);
         prevStart = startOfMonth(subMonths(today, 1));
@@ -419,11 +424,11 @@ export default function ReportsPage() {
 
   // Apply account & category filters
   const filteredTxns = useMemo(() => {
-    let txns = state.transactions;
+    let txns = personalTransactions;
     if (selectedAccounts.length > 0) txns = txns.filter(t => selectedAccounts.includes(t.accountId));
     if (selectedCategories.length > 0) txns = txns.filter(t => selectedCategories.includes(t.categoryId));
     return txns;
-  }, [state.transactions, selectedAccounts, selectedCategories]);
+  }, [personalTransactions, selectedAccounts, selectedCategories]);
 
   // Apply Date Range
   const periodTxns = useMemo(() => {
@@ -527,22 +532,17 @@ export default function ReportsPage() {
     periodTxns
       .filter(t => t.type === 'expense')
       .forEach(t => { 
-        const cat = state.categories.find(c => c.id === t.categoryId);
+        const cat = personalCategories.find(c => c.id === t.categoryId);
         const targetId = cat?.parentId || t.categoryId;
         catMap[targetId] = (catMap[targetId] || 0) + t.amount; 
       });
     return Object.entries(catMap)
-      .map(([id, amount]) => ({ cat: state.categories.find(c => c.id === id), amount }))
+      .map(([id, amount]) => ({ cat: personalCategories.find(c => c.id === id), amount }))
       .filter(x => x.cat)
       .sort((a, b) => b.amount - a.amount);
-  }, [periodTxns, state.categories]);
+  }, [periodTxns, personalCategories]);
 
-  // ── Freelance / Tax ────────────────────────────────────────────────────────
-  const freelanceAccounts = state.accounts.filter(a => a.name.toLowerCase().includes('freelance'));
-  const freelanceIncome = periodTxns
-    .filter(t => t.type === 'income' && freelanceAccounts.some(a => a.id === t.accountId))
-    .reduce((s, t) => s + t.amount, 0);
-  const taxLiability = freelanceIncome * (state.taxRate / 100);
+
 
   const tooltipStyle = {
     contentStyle: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' },
@@ -553,7 +553,7 @@ export default function ReportsPage() {
     { key: 'overview', label: 'Overview', icon: Activity },
     { key: 'trends', label: 'Trends', icon: TrendingUp },
     { key: 'categories', label: 'Categories', icon: Target },
-    { key: 'freelance', label: 'Freelance', icon: Zap },
+    { key: 'money-flow', label: 'Money Flow', icon: ArrowUpRight },
   ];
 
   return (
@@ -567,6 +567,7 @@ export default function ReportsPage() {
 
       {/* Filter Bar */}
       <div style={{
+        position: 'relative', zIndex: 100,
         display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 20,
         padding: '16px 20px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)'
       }}>
@@ -578,7 +579,7 @@ export default function ReportsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>Date Range</label>
           <div style={{ display: 'flex', gap: 4, background: 'var(--bg-input)', padding: 4, borderRadius: 8 }}>
-            {(['1M', '3M', '6M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as GlobalDatePreset[]).map(p => (
+            {(['7D', '1M', '3M', '6M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as GlobalDatePreset[]).map(p => (
               <button
                 key={p}
                 onClick={() => setDateRangePreset(p)}
@@ -593,6 +594,8 @@ export default function ReportsPage() {
             ))}
           </div>
         </div>
+
+
 
         {dateRangePreset === 'CUSTOM' && (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -610,7 +613,7 @@ export default function ReportsPage() {
         <MultiSelect
           label="Accounts"
           placeholder="All Accounts"
-          options={state.accounts.map(a => ({ id: a.id, label: a.name, color: a.color }))}
+          options={personalAccounts.map(a => ({ id: a.id, label: a.name, color: a.color }))}
           selectedIds={selectedAccounts}
           onChange={setSelectedAccounts}
         />
@@ -618,7 +621,7 @@ export default function ReportsPage() {
         <MultiSelect
           label="Categories"
           placeholder="All Categories"
-          options={state.categories.map(c => ({ id: c.id, label: <>{c.icon} {c.name}</>, color: c.color }))}
+          options={personalCategories.map(c => ({ id: c.id, label: <>{c.icon} {c.name}</>, color: c.color }))}
           selectedIds={selectedCategories}
           onChange={setSelectedCategories}
         />
@@ -673,10 +676,10 @@ export default function ReportsPage() {
               </div>
             </div>
             <div className="card" style={{ padding: 20 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16, display: 'flex', alignItems: 'center', justifyBetween: 'center', gap: 8 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Calendar size={16} color="var(--expense)" /> Spending Heatmap
                 {diffDays > 90 && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 'auto' }}>Showing last 35 days of period</span>}
-              </div>
+              </h3>
               <SpendingHeatmap transactions={periodTxns} activeRange={activeRange} />
             </div>
           </div>
@@ -790,63 +793,14 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* ── FREELANCE TAB ────────────────────────────────────────────────────── */}
-      {activeTab === 'freelance' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Tax Card */}
-          <div style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(99,102,241,0.1))', borderRadius: 16, padding: 24, border: '1px solid rgba(168,85,247,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <AlertTriangle size={18} color="#f59e0b" />
-                  <span style={{ fontWeight: 700, fontSize: 16 }}>Estimated Tax Liability</span>
-                </div>
-                <div style={{ fontSize: 42, fontWeight: 800, color: '#a855f7', lineHeight: 1 }}>{formatCurrency(taxLiability, state.currency)}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
-                  {state.taxRate}% of {formatCurrency(freelanceIncome, state.currency)} total freelance income
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-card)', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)' }}>
-                <label style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Tax Rate (%)</label>
-                <input
-                  type="number" className="form-input" style={{ width: 80, padding: '6px 12px' }}
-                  value={state.taxRate}
-                  onChange={e => dispatch({ type: 'SET_TAX_RATE', payload: Number(e.target.value) })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* KPI Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-            <KpiCard label="Freelance Income" value={formatCurrency(freelanceIncome, state.currency)} color="#8b5cf6" icon={Award} />
-            <KpiCard label="Tax Set Aside" value={formatCurrency(taxLiability, state.currency)} color="#f59e0b" icon={AlertTriangle} />
-            <KpiCard label="After-Tax Income" value={formatCurrency(freelanceIncome - taxLiability, state.currency)} color="#22c55e" icon={DollarSign} />
-          </div>
-
-          {/* Freelance Trend */}
-          <div className="card" style={{ padding: 24 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 20 }}>Freelance Revenue Trend</div>
-            <div style={{ height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="freelGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)' }} tickFormatter={v => formatCurrency(v, state.currency)} />
-                  <Tooltip {...tooltipStyle} formatter={(v: any) => [formatCurrency(Number(v), state.currency), 'Revenue']} />
-                  <Area type="monotone" dataKey="Income" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#freelGrad)" dot={{ fill: '#8b5cf6', r: 5 }} activeDot={{ r: 7 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+      {/* ── MONEY FLOW TAB ─────────────────────────────────────────────────── */}
+      {activeTab === 'money-flow' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: 600 }}>
+          <CashFlowSankey transactions={personalTransactions} activeRange={activeRange} accountIds={selectedAccounts} categoryIds={selectedCategories} />
         </div>
       )}
+
+
     </PageWrapper>
   );
 }

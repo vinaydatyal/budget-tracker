@@ -7,9 +7,10 @@ import { Pencil, Trash2 } from 'lucide-react';
 interface Props {
   debt: Debt;
   onEdit: () => void;
+  onLogPayment: () => void;
 }
 
-export function DebtCard({ debt, onEdit }: Props) {
+export function DebtCard({ debt, onEdit, onLogPayment }: Props) {
   const { state, deleteDebt } = useApp();
   
   // Calculate estimated months to payoff if paying minimum
@@ -50,7 +51,11 @@ export function DebtCard({ debt, onEdit }: Props) {
             <Pencil size={14} />
           </button>
           <button className="btn btn-icon btn-sm" onClick={() => {
-            if (confirm(`Delete debt "${debt.name}"?`)) deleteDebt(debt.id);
+            const hasLinked = state.recurringTransactions.some(r => r.linkedDebtId === debt.id);
+            const msg = hasLinked 
+              ? `Delete debt "${debt.name}"? This will also CANCEL your automated EMI subscription.` 
+              : `Delete debt "${debt.name}"?`;
+            if (confirm(msg)) deleteDebt(debt.id);
           }} aria-label="Delete" style={{ color: 'var(--expense)' }}>
             <Trash2 size={14} />
           </button>
@@ -71,18 +76,32 @@ export function DebtCard({ debt, onEdit }: Props) {
           <span style={{ fontWeight: 600 }}>Day {new Date(debt.dueDate).getDate()} of month</span>
         </div>
         {payoffMonths !== null ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4 }}>
-            <span style={{ color: 'var(--text-muted)' }}>Est. Payoff</span>
-            <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-              {Math.floor(payoffMonths / 12)}y {payoffMonths % 12}m
-            </span>
-          </div>
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Est. Next Interest</span>
+              <span style={{ fontWeight: 600, color: 'var(--expense)' }}>{formatCurrency(r * P, state.currency)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Est. Payoff</span>
+              <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+                {Math.floor(payoffMonths / 12)}y {payoffMonths % 12}m
+              </span>
+            </div>
+          </>
         ) : M > 0 && (r * P) >= M ? (
           <div style={{ fontSize: 12, color: 'var(--expense)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4 }}>
             Minimum payment doesn't cover interest!
           </div>
         ) : null}
       </div>
+      
+      <button 
+        className="btn btn-secondary" 
+        style={{ width: '100%', marginTop: 16 }}
+        onClick={onLogPayment}
+      >
+        Log Payment
+      </button>
     </div>
   );
 }

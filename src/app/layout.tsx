@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
-
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 const outfit = Outfit({ 
   subsets: ['latin'],
   variable: '--font-outfit',
@@ -17,6 +18,13 @@ import { AppShell } from '@/components/layout/AppShell';
 export const metadata: Metadata = {
   title: 'Budget Tracker — Personal Finance Manager',
   description: 'Track your income, expenses, and budgets with ease. Manage your personal finances beautifully.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Solv',
+  },
+  themeColor: '#a855f7',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

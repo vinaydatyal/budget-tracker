@@ -2,17 +2,20 @@ import React, { useMemo } from 'react';
 import { Sankey, Tooltip, ResponsiveContainer } from 'recharts';
 import { useApp, formatCurrency } from '@/context/AppContext';
 
+import { Transaction } from '@/lib/types';
+
 interface Props {
+  transactions: Transaction[];
   activeRange: { start: Date; end: Date };
   accountIds?: string[];
   categoryIds?: string[];
 }
 
-export function CashFlowSankey({ activeRange, accountIds, categoryIds }: Props) {
+export function CashFlowSankey({ transactions, activeRange, accountIds, categoryIds }: Props) {
   const { state } = useApp();
 
   const data = useMemo(() => {
-    let txns = state.transactions.filter(t => {
+    let txns = transactions.filter(t => {
       const d = new Date(t.date);
       return d >= activeRange.start && d <= activeRange.end;
     });
@@ -87,7 +90,7 @@ export function CashFlowSankey({ activeRange, accountIds, categoryIds }: Props) 
     if (nodes.length <= 1) return null;
 
     return { nodes, links };
-  }, [state.transactions, state.categories, activeRange, accountIds, categoryIds]);
+  }, [transactions, state.categories, activeRange, accountIds, categoryIds]);
 
   if (!data) {
     return (
@@ -126,18 +129,20 @@ export function CashFlowSankey({ activeRange, accountIds, categoryIds }: Props) 
       <div className="card-header">
         <span className="card-title">Cash Flow</span>
       </div>
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <Sankey
-            data={data}
-            node={{ fill: 'var(--income)', opacity: 0.8 }}
-            nodePadding={20}
-            link={{ stroke: 'var(--text-muted)', strokeOpacity: 0.2 }}
-            margin={{ left: 20, right: 20, top: 20, bottom: 20 }}
-          >
-            <Tooltip content={<CustomTooltip />} />
-          </Sankey>
-        </ResponsiveContainer>
+      <div style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden' }}>
+        <div style={{ minWidth: 400, height: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <Sankey
+              data={data}
+              node={{ fill: 'var(--income)', opacity: 0.8 }}
+              nodePadding={20}
+              link={{ stroke: 'var(--text-muted)', strokeOpacity: 0.2 }}
+              margin={{ left: 20, right: 20, top: 20, bottom: 20 }}
+            >
+              <Tooltip content={<CustomTooltip />} />
+            </Sankey>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );

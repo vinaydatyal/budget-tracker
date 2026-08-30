@@ -70,7 +70,14 @@ export function MultiSelect({ label, options, selectedIds, onChange, placeholder
         <span style={{ color: selectedCount > 0 ? 'var(--text-main)' : 'var(--text-muted)' }}>
           {displayText}
         </span>
-        <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+        <ChevronDown 
+          size={16} 
+          style={{ 
+            color: 'var(--text-muted)', 
+            transform: isOpen ? 'rotate(180deg)' : 'none', 
+            transition: 'transform 0.2s ease-in-out' 
+          }} 
+        />
       </div>
 
       {isOpen && (
@@ -86,47 +93,59 @@ export function MultiSelect({ label, options, selectedIds, onChange, placeholder
           boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
           zIndex: 50,
           maxHeight: 300,
-          overflowY: 'auto'
+          display: 'flex',
+          flexDirection: 'column'
         }}>
-          <div 
-            style={{ 
-              padding: '10px 12px', 
-              borderBottom: '1px solid var(--border)', 
-              cursor: 'pointer',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}
-            onClick={handleSelectAll}
-          >
-            <div style={{ width: 16, height: 16, border: '1px solid var(--border)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selectedCount === options.length ? 'var(--accent)' : 'transparent' }}>
-              {selectedCount === options.length && <Check size={12} color="white" />}
-            </div>
-            Select All
-          </div>
-          {options.map(opt => {
-            const isSelected = selectedIds.includes(opt.id);
-            return (
-              <div 
-                key={opt.id}
-                style={{ 
-                  padding: '10px 12px', 
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: isSelected ? 'var(--bg-card-hover)' : 'transparent'
-                }}
-                onClick={() => toggleOption(opt.id)}
-              >
-                <div style={{ width: 16, height: 16, border: `1px solid ${isSelected ? 'transparent' : 'var(--border)'}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? (opt.color || 'var(--accent)') : 'transparent' }}>
-                  {isSelected && <Check size={12} color="white" />}
-                </div>
-                <span>{opt.label}</span>
+          <div style={{ overflowY: 'auto', flex: 1, maxHeight: 250 }}>
+            <div 
+              style={{ 
+                padding: '10px 12px', 
+                borderBottom: '1px solid var(--border)', 
+                cursor: 'pointer',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}
+              onClick={handleSelectAll}
+            >
+              <div style={{ width: 16, height: 16, border: '1px solid var(--border)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selectedCount === options.length ? 'var(--accent)' : 'transparent' }}>
+                {selectedCount === options.length && <Check size={12} color="white" />}
               </div>
-            );
-          })}
+              Select All
+            </div>
+            {options.map(opt => {
+              const isSelected = selectedIds.includes(opt.id);
+              return (
+                <div 
+                  key={opt.id}
+                  style={{ 
+                    padding: '10px 12px', 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: isSelected ? 'var(--bg-card-hover)' : 'transparent'
+                  }}
+                  onClick={() => toggleOption(opt.id)}
+                >
+                  <div style={{ width: 16, height: 16, border: `1px solid ${isSelected ? 'transparent' : 'var(--border)'}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? (opt.color || 'var(--accent)') : 'transparent' }}>
+                    {isSelected && <Check size={12} color="white" />}
+                  </div>
+                  <span>{opt.label}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ padding: '8px', borderTop: '1px solid var(--border)', background: 'var(--bg-input)', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
+            <button 
+              className="btn btn-secondary btn-sm" 
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => setIsOpen(false)}
+            >
+              Done
+            </button>
+          </div>
         </div>
       )}
     </div>

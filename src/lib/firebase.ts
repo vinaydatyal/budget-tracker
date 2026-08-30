@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // PLACEHOLDER CONFIGURATION
 // Replace these values with your actual Firebase config from the Firebase Console
@@ -20,4 +21,5 @@ const app = !getApps().length && isConfigured ? initializeApp(firebaseConfig) : 
 
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
+export const storage = app ? getStorage(app) : null;
 export const googleProvider = new GoogleAuthProvider();

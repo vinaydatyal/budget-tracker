@@ -101,10 +101,12 @@ export function UpcomingBills() {
               toAccountId: item.toAccountId,
               payee: item.payee,
               tags: item.tags,
-              freelanceData: item.freelanceData,
               description: item.description,
               date: item.due.toISOString(),
-              notes: 'Auto-posted from recurring bill'
+              notes: 'Auto-posted from recurring bill',
+              linkedRecurringId: item.id,
+              linkedDebtId: item.linkedDebtId,
+              linkedSavingsGoalId: item.linkedSavingsGoalId
             });
             // Calculate next due date for the recurring item
             const nextDue = getNextDueDate(addDays(item.due, 1).toISOString(), item.frequency).toISOString().slice(0, 10);

@@ -12,14 +12,17 @@ import { format } from 'date-fns';
 export default function InvoicesPage() {
   const { state } = useApp();
   const [selectedClientStr, setSelectedClientStr] = useState<string>('');
+  const [enableLineItems, setEnableLineItems] = useState(true);
+  const [enableTax, setEnableTax] = useState(false);
+  const [taxRate, setTaxRate] = useState<number>(10);
 
-  // Extract unique freelance projects
-  const freelanceProjects = useMemo(() => {
+  // Extract unique business projects
+  const businessProjects = useMemo(() => {
     const projects: Record<string, { clientName: string; projectName: string; monthName: string; txns: Transaction[] }> = {};
     
     for (const t of state.transactions) {
-      if (t.type === 'income' && t.freelanceData) {
-        const { clientName, projectName, monthName } = t.freelanceData;
+      if (t.type === 'income' && t.businessData) {
+        const { clientName, projectName, monthName } = t.businessData;
         const key = `${clientName}|${projectName}|${monthName}`;
         if (!projects[key]) {
           projects[key] = { clientName, projectName, monthName, txns: [] };
@@ -31,8 +34,10 @@ export default function InvoicesPage() {
     return Object.values(projects);
   }, [state.transactions]);
 
-  const selectedProject = freelanceProjects.find(p => `${p.clientName}|${p.projectName}|${p.monthName}` === selectedClientStr);
-  const totalAmount = selectedProject?.txns.reduce((s, t) => s + t.amount, 0) || 0;
+  const selectedProject = businessProjects.find(p => `${p.clientName}|${p.projectName}|${p.monthName}` === selectedClientStr);
+  const baseAmount = selectedProject?.txns.reduce((s, t) => s + t.amount, 0) || 0;
+  const totalTax = enableTax ? (baseAmount * (taxRate / 100)) : 0;
+  const totalAmount = baseAmount + totalTax;
 
   function generatePDF() {
     if (!selectedProject) return;
@@ -63,30 +68,51 @@ export default function InvoicesPage() {
     doc.text(`Service Period: ${selectedProject.monthName}`, 14, 69);
     
     // Table
-    const tableData = selectedProject.txns.map(t => [
-      format(new Date(t.date), 'MMM dd, yyyy'),
-      t.description || 'Consulting / Freelance Services',
-      formatCurrency(t.amount, state.currency)
-    ]);
+    if (enableLineItems) {
+      const tableData = selectedProject.txns.map(t => [
+        format(new Date(t.date), 'MMM dd, yyyy'),
+        t.description || 'Consulting / Business Services',
+        formatCurrency(t.amount, state.currency)
+      ]);
 
-    autoTable(doc, {
-      startY: 80,
-      head: [['Date', 'Description', 'Amount']],
-      body: tableData,
-      theme: 'striped',
-      headStyles: { fillColor: [59, 130, 246] },
-    });
+      autoTable(doc, {
+        startY: 80,
+        head: [['Date', 'Description', 'Amount']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+      });
+    } else {
+      autoTable(doc, {
+        startY: 80,
+        head: [['Description', 'Amount']],
+        body: [['Consulting / Business Services', formatCurrency(baseAmount, state.currency)]],
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+      });
+    }
 
     // Total
     const finalY = (doc as any).lastAutoTable.finalY || 80;
-    doc.setFontSize(14);
-    doc.setTextColor(0);
-    doc.text(`Total Due: ${formatCurrency(totalAmount, state.currency)}`, 14, finalY + 15);
+    
+    if (enableTax) {
+      doc.setFontSize(12);
+      doc.setTextColor(100);
+      doc.text(`Subtotal: ${formatCurrency(baseAmount, state.currency)}`, 14, finalY + 10);
+      doc.text(`Tax (${taxRate}%): ${formatCurrency(totalTax, state.currency)}`, 14, finalY + 17);
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text(`Total Due: ${formatCurrency(totalAmount, state.currency)}`, 14, finalY + 27);
+    } else {
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text(`Total Due: ${formatCurrency(totalAmount, state.currency)}`, 14, finalY + 15);
+    }
 
     // Footer
     doc.setFontSize(10);
     doc.setTextColor(150);
-    doc.text('Thank you for your business!', 14, finalY + 30);
+    doc.text('Thank you for your business!', 14, finalY + (enableTax ? 45 : 30));
 
     doc.save(`Invoice_${selectedProject.clientName.replace(/\s+/g, '_')}_${selectedProject.monthName}.pdf`);
   }
@@ -96,7 +122,7 @@ export default function InvoicesPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Invoice Generator</h1>
-          <p className="page-subtitle">Instantly create PDF invoices from your logged freelance income</p>
+          <p className="page-subtitle">Instantly create PDF invoices from your logged business revenue</p>
         </div>
       </div>
 
@@ -108,14 +134,39 @@ export default function InvoicesPage() {
             value={selectedClientStr} 
             onChange={e => setSelectedClientStr(e.target.value)}
           >
-            <option value="">-- Choose a tracked freelance project --</option>
-            {freelanceProjects.map(p => (
+            <option value="">-- Choose a tracked business project --</option>
+            {businessProjects.map(p => (
               <option key={`${p.clientName}|${p.projectName}|${p.monthName}`} value={`${p.clientName}|${p.projectName}|${p.monthName}`}>
                 {p.clientName} - {p.projectName} ({p.monthName})
               </option>
             ))}
           </select>
         </div>
+
+        {selectedProject && (
+          <div style={{ display: 'flex', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={enableLineItems} onChange={e => setEnableLineItems(e.target.checked)} />
+              <span style={{ fontSize: 14 }}>Enable Line Items</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={enableTax} onChange={e => setEnableTax(e.target.checked)} />
+              <span style={{ fontSize: 14 }}>Add Tax</span>
+            </label>
+            {enableTax && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 14 }}>Rate (%):</span>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  style={{ width: 80, padding: '4px 8px' }} 
+                  value={taxRate} 
+                  onChange={e => setTaxRate(parseFloat(e.target.value) || 0)} 
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {selectedProject ? (
           <div style={{ marginTop: 32, padding: 24, background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
@@ -162,8 +213,8 @@ export default function InvoicesPage() {
             <div className="empty-state-icon"><FileText size={40} style={{ opacity: 0.5 }} /></div>
             <div className="empty-state-title">No Project Selected</div>
             <div className="empty-state-text">
-              Select a freelance project from the dropdown above to generate a professional invoice.
-              (Note: You must log income transactions to a "Freelance" account first!)
+              Select a business project from the dropdown above to generate a professional invoice.
+              (Note: You must log income transactions with "Business & Invoice Details" first!)
             </div>
           </div>
         )}

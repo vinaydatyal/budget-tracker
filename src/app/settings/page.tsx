@@ -2,221 +2,631 @@
 
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { PageWrapper } from '@/components/layout/PageWrapper';
-import { Download, Upload, Trash2, Database, Settings as SettingsIcon } from 'lucide-react';
-import { AppState } from '@/lib/types';
-import { DEFAULT_CATEGORIES } from '@/lib/storage';
+import { useAuth } from '@/context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Settings as SettingsIcon, 
+  Brain, 
+  PieChart, 
+  Database, 
+  Globe, 
+  Download, 
+  Upload, 
+  Trash2,
+  ChevronRight,
+  LogIn,
+  LogOut,
+  User as UserIcon
+} from 'lucide-react';
+import { BankLinkButton } from '@/components/settings/BankLinkButton';
+
+const currencies = [
+  { code: 'USD', label: 'US Dollar ($)' },
+  { code: 'EUR', label: 'Euro (€)' },
+  { code: 'GBP', label: 'British Pound (£)' },
+  { code: 'INR', label: 'Indian Rupee (₹)' },
+  { code: 'JPY', label: 'Japanese Yen (¥)' },
+  { code: 'AUD', label: 'Australian Dollar (A$)' },
+  { code: 'CAD', label: 'Canadian Dollar (C$)' },
+];
+
+const TABS = [
+  { id: 'core', label: 'Core Engines', icon: Brain, desc: 'Budgeting & Automation' },
+  { id: 'addons', label: 'Optional Add-Ons', icon: PieChart, desc: 'Simulators & Estimators' },
+  { id: 'general', label: 'General Preferences', icon: Globe, desc: 'Currency & Display' },
+  { id: 'account', label: 'Cloud Account', icon: UserIcon, desc: 'Google Backup & Sync' },
+  { id: 'data', label: 'Data Management', icon: Database, desc: 'Backups & Wipes' },
+];
 
 export default function SettingsPage() {
-  const { state, dispatch, toggleTheme } = useApp();
-  const [importStatus, setImportStatus] = useState<string>('');
-
-  const currencies = [
-    { code: 'USD', label: 'US Dollar ($)' },
-    { code: 'EUR', label: 'Euro (€)' },
-    { code: 'GBP', label: 'British Pound (£)' },
-    { code: 'INR', label: 'Indian Rupee (₹)' },
-    { code: 'AUD', label: 'Australian Dollar (A$)' },
-    { code: 'CAD', label: 'Canadian Dollar (C$)' },
-    { code: 'JPY', label: 'Japanese Yen (¥)' },
-  ];
+  const { state, updatePreferences, dispatch, exportData, importData, clearData, loadDemoData } = useApp();
+  const { user, signInWithGoogle, signOut } = useAuth();
+  const { preferences } = state;
+  const [activeTab, setActiveTab] = useState('core');
+  const [importStatus, setImportStatus] = useState('');
 
   function handleCurrencyChange(e: React.ChangeEvent<HTMLSelectElement>) {
     dispatch({ type: 'SET_CURRENCY', payload: e.target.value });
   }
 
   function handleExport() {
-    const dataStr = JSON.stringify(state, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `budgetpro-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const dataStr = exportData();
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = `budget-backup-${new Date().toISOString().slice(0,10)}.json`;
+    let linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
   }
 
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = event.target?.result as string;
-        const parsedState = JSON.parse(json) as AppState;
-        if (parsedState && parsedState.transactions) {
-          dispatch({ type: 'LOAD_STATE', payload: parsedState });
-          setImportStatus('Data successfully imported!');
+        const success = importData(event.target?.result as string);
+        if (success) {
+          setImportStatus('Data restored successfully!');
           setTimeout(() => setImportStatus(''), 3000);
         } else {
-          setImportStatus('Error: Invalid backup file structure.');
+          setImportStatus('Invalid backup file');
         }
       } catch (err) {
-        setImportStatus('Error parsing file.');
+        setImportStatus('Error importing file');
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // reset
   }
 
   function handleClearData() {
-    if (confirm('Are you absolutely sure you want to delete all data? This cannot be undone unless you have a backup.')) {
-      if (confirm('Final warning: All transactions, budgets, and categories will be permanently deleted!')) {
-          const emptyState: AppState = {
-            transactions: [],
-            categories: [...DEFAULT_CATEGORIES],
-            accounts: [],
-            budgetGoals: [],
-            recurringTransactions: [],
-            debts: [],
-            savingsGoals: [],
-            theme: state.theme,
-            taxRate: state.taxRate,
-            currency: state.currency,
-          };
-        dispatch({ type: 'LOAD_STATE', payload: emptyState });
-        alert('All data has been cleared.');
-      }
+    if (confirm('Are you absolutely sure you want to delete ALL your data? This action cannot be undone!')) {
+      clearData();
     }
   }
 
   function handleLoadDemo() {
-    if (confirm('This will replace your current data with a demo dataset. Continue?')) {
-      const demoAccounts = [
-        { id: '1', name: 'Main Checking', type: 'checking', color: '#3b82f6' },
-        { id: '2', name: 'Savings', type: 'savings', color: '#10b981' },
-        { id: '3', name: 'Credit Card', type: 'credit', color: '#f59e0b' },
-      ];
-      const demoCategories = [
-        { id: '1', name: 'Salary', type: 'income', icon: '💰', color: '#10b981' },
-        { id: '2', name: 'Freelance', type: 'income', icon: '💻', color: '#8b5cf6' },
-        { id: '3', name: 'Groceries', type: 'expense', icon: '🛒', color: '#3b82f6' },
-        { id: '4', name: 'Rent', type: 'expense', icon: '🏠', color: '#ef4444' },
-        { id: '5', name: 'Dining Out', type: 'expense', icon: '🍔', color: '#f97316' },
-        { id: '6', name: 'Utilities', type: 'expense', icon: '⚡', color: '#06b6d4' },
-        { id: '7', name: 'Entertainment', type: 'expense', icon: '🎬', color: '#ec4899' },
-      ];
-
-      const demoTransactions: any[] = [];
-      const now = new Date();
-      
-      // Generate 6 months of data
-      for (let i = 0; i < 6; i++) {
-        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 15);
-        const yyyy = monthDate.getFullYear();
-        const mm = String(monthDate.getMonth() + 1).padStart(2, '0');
-        
-        // Income
-        demoTransactions.push({ id: `inc-${i}-1`, type: 'income', amount: 4500, categoryId: '1', accountId: '1', date: `${yyyy}-${mm}-01`, description: 'Monthly Salary' });
-        if (Math.random() > 0.5) {
-          demoTransactions.push({ id: `inc-${i}-2`, type: 'income', amount: 1200 + Math.random() * 800, categoryId: '2', accountId: '1', date: `${yyyy}-${mm}-15`, description: 'Freelance Project', freelanceData: { clientName: 'Acme Corp', projectName: 'Website Redesign', monthName: `${yyyy}-${mm}` } });
-        }
-
-        // Fixed Expenses
-        demoTransactions.push({ id: `exp-${i}-1`, type: 'expense', amount: 1500, categoryId: '4', accountId: '1', date: `${yyyy}-${mm}-02`, description: 'Rent' });
-        demoTransactions.push({ id: `exp-${i}-2`, type: 'expense', amount: 150, categoryId: '6', accountId: '1', date: `${yyyy}-${mm}-05`, description: 'Electric Bill' });
-
-        // Variable Expenses (10-15 random per month)
-        const numTxns = 10 + Math.floor(Math.random() * 5);
-        for (let j = 0; j < numTxns; j++) {
-          const dd = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
-          const isGroceries = Math.random() > 0.5;
-          const catId = isGroceries ? '3' : (Math.random() > 0.5 ? '5' : '7');
-          const amt = 20 + Math.random() * 80;
-          demoTransactions.push({ id: `var-${i}-${j}`, type: 'expense', amount: amt, categoryId: catId, accountId: '3', date: `${yyyy}-${mm}-${dd}`, description: isGroceries ? 'Whole Foods' : 'Restaurant/Movie' });
-        }
-      }
-
-      const demoState: AppState = {
-        transactions: demoTransactions as any,
-        categories: demoCategories as any,
-        accounts: demoAccounts as any,
-        budgetGoals: [],
-        recurringTransactions: [],
-        debts: [],
-        savingsGoals: [],
-        theme: state.theme,
-        taxRate: state.taxRate,
-        currency: state.currency,
-      };
-      dispatch({ type: 'LOAD_STATE', payload: demoState });
-      alert('Demo data loaded!');
+    if (confirm('This will replace your current data with demo data. Do you want to continue?')) {
+      loadDemoData();
     }
   }
 
-  return (
-    <PageWrapper className="page-body">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Manage preferences and data backups</p>
-        </div>
-      </div>
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'core':
+        return (
+          <div className="settings-section">
+            <div className="settings-header">
+              <div className="settings-icon-wrapper" style={{ background: 'var(--income-subtle)', color: 'var(--income)' }}>
+                <Brain size={24} />
+              </div>
+              <div>
+                <h2>Core Logic Engines</h2>
+                <p>Manage the fundamental automation engines of the app.</p>
+              </div>
+            </div>
 
-      <div style={{ display: 'grid', gap: 24, maxWidth: 800 }}>
-        
-        {/* Preferences Section */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <SettingsIcon size={18} /> Preferences
-            </span>
-          </div>
-          <div className="form-group" style={{ maxWidth: 300 }}>
-            <label className="form-label">Currency Symbol</label>
-            <select className="form-select" value={state.currency || 'USD'} onChange={handleCurrencyChange}>
-              {currencies.map(c => (
-                <option key={c.code} value={c.code}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+            <div className="settings-card">
+              <div className="settings-item">
+                <div className="settings-item-info">
+                  <h3>Envelope Budgeting</h3>
+                  <p>Enable dynamic month-to-month budget rollover. Unspent funds carry over to the next month.</p>
+                </div>
+                <label className="ios-toggle">
+                  <input type="checkbox" checked={!!preferences.enableEnvelopeBudgeting} onChange={e => updatePreferences({ enableEnvelopeBudgeting: e.target.checked })} />
+                  <span className="ios-slider"></span>
+                </label>
+              </div>
+              
+              <div className="settings-divider" />
 
-        {/* Data Management Section */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Database size={18} /> Data Management
-            </span>
+              <div className="settings-item">
+                <div className="settings-item-info">
+                  <h3>Auto-Cover Overspending</h3>
+                  <p>Automatically pool surplus budget from underspent categories to cover deficits in others.</p>
+                </div>
+                <label className="ios-toggle">
+                  <input type="checkbox" checked={!!preferences.autoCoverOverspending} onChange={e => updatePreferences({ autoCoverOverspending: e.target.checked })} />
+                  <span className="ios-slider"></span>
+                </label>
+              </div>
+            </div>
           </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-            {/* Export Backup */}
-            <div style={{ padding: 16, background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border)' }}>
-              <h3 style={{ fontSize: 15, marginBottom: 8 }}>Export Backup</h3>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Download your complete data as a secure JSON file.</p>
-              <button className="btn btn-secondary" onClick={handleExport} style={{ width: '100%', justifyContent: 'center' }}>
-                <Download size={16} /> Export JSON
+        );
+      
+      case 'addons':
+        return (
+          <div className="settings-section">
+            <div className="settings-header">
+              <div className="settings-icon-wrapper" style={{ background: 'var(--expense-subtle)', color: 'var(--expense)' }}>
+                <PieChart size={24} />
+              </div>
+              <div>
+                <h2>Optional Add-Ons</h2>
+                <p>Toggle advanced calculators and simulators.</p>
+              </div>
+            </div>
+
+            <div className="settings-card">
+              <div className="settings-item">
+                <div className="settings-item-info">
+                  <h3>Debt Payoff Simulator</h3>
+                  <p>Adds an advanced mathematical simulator to the Debts page to test Snowball and Avalanche payoff methods.</p>
+                </div>
+                <label className="ios-toggle">
+                  <input type="checkbox" checked={!!preferences.enableDebtSimulator} onChange={e => updatePreferences({ enableDebtSimulator: e.target.checked })} />
+                  <span className="ios-slider"></span>
+                </label>
+              </div>
+              
+              <div className="settings-divider" />
+
+              <div className="settings-item">
+                <div className="settings-item-info">
+                  <h3>Business Mode</h3>
+                  <p>Enables advanced tools like Revenue Sources (Clients) and automated Percentage Income Splitting.</p>
+                </div>
+                <label className="ios-toggle">
+                  <input type="checkbox" checked={!!preferences.enableBusinessMode} onChange={e => updatePreferences({ enableBusinessMode: e.target.checked })} />
+                  <span className="ios-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'general':
+        return (
+          <div className="settings-section">
+            <div className="settings-header">
+              <div className="settings-icon-wrapper" style={{ background: 'var(--warning-subtle)', color: 'var(--warning)' }}>
+                <Globe size={24} />
+              </div>
+              <div>
+                <h2>General Preferences</h2>
+                <p>Configure localization and display settings.</p>
+              </div>
+            </div>
+
+            <div className="settings-card">
+              <div className="settings-item">
+                <div className="settings-item-info">
+                  <h3>Base Currency</h3>
+                  <p>Select the primary currency symbol used across the dashboard.</p>
+                </div>
+                <select className="form-select" value={state.currency || 'USD'} onChange={handleCurrencyChange} style={{ width: 180 }}>
+                  {currencies.map(c => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'account':
+        return (
+          <div className="settings-section">
+            <div className="settings-header">
+              <div className="settings-icon-wrapper" style={{ background: 'var(--income-subtle)', color: 'var(--income)' }}>
+                <UserIcon size={24} />
+              </div>
+              <div>
+                <h2>Cloud Account</h2>
+                <p>Manage your Google authentication and data sync.</p>
+              </div>
+            </div>
+
+            <div className="settings-card">
+              <div className="settings-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 16 }}>
+                {user ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-modifier-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        {user.photoURL ? <img src={user.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <UserIcon size={24} />}
+                      </div>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: 16 }}>{user.displayName || 'Google User'}</h3>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>{user.email}</p>
+                      </div>
+                    </div>
+                    <div style={{ padding: 12, background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderRadius: 8, fontSize: 13, width: '100%' }}>
+                      ✓ Your data is actively syncing to Firebase Cloud Firestore.
+                    </div>
+                    <button className="btn btn-secondary" onClick={signOut} style={{ alignSelf: 'flex-start' }}>
+                      <LogOut size={16} /> Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 16 }}>Not Signed In</h3>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                        Sign in with Google to automatically backup your data and access it across devices. 
+                        Without signing in, your data remains safely in your browser but could be lost if you clear your cache.
+                      </p>
+                    </div>
+                    <button className="btn btn-primary" onClick={signInWithGoogle} style={{ alignSelf: 'flex-start' }}>
+                      <LogIn size={16} /> Sign in with Google
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <BankLinkButton />
+          </div>
+        );
+
+      case 'data':
+        return (
+          <div className="settings-section">
+            <div className="settings-header">
+              <div className="settings-icon-wrapper" style={{ background: 'var(--info-subtle)', color: 'var(--info)' }}>
+                <Database size={24} />
+              </div>
+              <div>
+                <h2>Data Management</h2>
+                <p>Export backups, restore data, or securely wipe your local database.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+              <button className="settings-action-card" onClick={handleExport}>
+                <div className="action-icon" style={{ color: 'var(--income)' }}><Download size={20} /></div>
+                <div className="action-text">
+                  <h4>Export Backup</h4>
+                  <p>Download a secure JSON file.</p>
+                </div>
+              </button>
+
+              <label className="settings-action-card" style={{ cursor: 'pointer' }}>
+                <div className="action-icon" style={{ color: 'var(--info)' }}><Upload size={20} /></div>
+                <div className="action-text">
+                  <h4>Restore Backup</h4>
+                  <p>Import a previous JSON backup.</p>
+                  <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
+                </div>
+              </label>
+
+              <button className="settings-action-card" onClick={handleLoadDemo}>
+                <div className="action-icon" style={{ color: 'var(--warning)' }}><SettingsIcon size={20} /></div>
+                <div className="action-text">
+                  <h4>Load Demo Data</h4>
+                  <p>Fill the app with sample data.</p>
+                </div>
+              </button>
+
+              <button className="settings-action-card danger" onClick={handleClearData}>
+                <div className="action-icon"><Trash2 size={20} /></div>
+                <div className="action-text">
+                  <h4>Wipe Database</h4>
+                  <p>Permanently delete all data.</p>
+                </div>
               </button>
             </div>
-
-            {/* Import Backup */}
-            <div style={{ padding: 16, background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border)' }}>
-              <h3 style={{ fontSize: 15, marginBottom: 8 }}>Restore Backup</h3>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Import a previous JSON backup to restore your state.</p>
-              <label className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', cursor: 'pointer' }}>
-                <Upload size={16} /> Import JSON
-                <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
-              </label>
-              {importStatus && <div style={{ fontSize: 12, color: 'var(--income)', marginTop: 8 }}>{importStatus}</div>}
-            </div>
+            
+            {importStatus && (
+              <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--income-subtle)', color: 'var(--income)', borderRadius: 8, fontSize: 14, fontWeight: 500, textAlign: 'center' }}>
+                {importStatus}
+              </div>
+            )}
           </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
 
-          <hr style={{ border: 'none', borderTop: '1px solid var(--border-strong)', margin: '24px 0' }} />
-
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <button className="btn btn-danger" onClick={handleClearData}>
-              <Trash2 size={16} /> Delete All Data
-            </button>
-            <button className="btn btn-secondary" onClick={handleLoadDemo}>
-              Load Demo Data
-            </button>
-          </div>
-
+  return (
+    <div className="page-body">
+      <div className="page-header" style={{ marginBottom: 40 }}>
+        <div>
+          <h1 className="page-title">Settings</h1>
+          <p className="page-subtitle">Personalize your Solv experience</p>
         </div>
-
       </div>
-    </PageWrapper>
+
+      <div className="settings-layout">
+        {/* Sidebar Navigation */}
+        <nav className="settings-nav">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                className={`settings-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <div className="settings-nav-icon">
+                  <Icon size={18} />
+                </div>
+                <div className="settings-nav-text">
+                  <div className="settings-nav-label">{tab.label}</div>
+                  <div className="settings-nav-desc">{tab.desc}</div>
+                </div>
+                {isActive && <ChevronRight size={16} className="settings-nav-arrow" />}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Content Area */}
+        <main className="settings-content">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+
+      {/* Global Settings Styles */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .settings-layout {
+          display: flex;
+          gap: 40px;
+          align-items: flex-start;
+          max-width: 1000px;
+        }
+
+        .settings-nav {
+          width: 280px;
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .settings-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 16px;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          width: 100%;
+        }
+
+        .settings-nav-item:hover {
+          background: var(--bg-card-hover);
+        }
+
+        .settings-nav-item.active {
+          background: var(--bg-card);
+          border-color: var(--border);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .settings-nav-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-input);
+          color: var(--text-muted);
+          transition: all 0.2s ease;
+        }
+
+        .settings-nav-item.active .settings-nav-icon {
+          background: var(--text-primary);
+          color: var(--bg-card);
+        }
+
+        .settings-nav-text {
+          flex: 1;
+        }
+
+        .settings-nav-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-primary);
+          margin-bottom: 4px;
+        }
+
+        .settings-nav-desc {
+          font-size: 12px;
+          color: var(--text-muted);
+        }
+
+        .settings-nav-arrow {
+          color: var(--text-muted);
+        }
+
+        .settings-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .settings-header {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          margin-bottom: 24px;
+        }
+
+        .settings-icon-wrapper {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .settings-header h2 {
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin-bottom: 4px;
+        }
+
+        .settings-header p {
+          font-size: 14px;
+          color: var(--text-muted);
+        }
+
+        .settings-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 8px 24px;
+          box-shadow: var(--shadow-sm);
+        }
+
+        .settings-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 24px 0;
+          gap: 24px;
+        }
+
+        .settings-item-info h3 {
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--text-primary);
+          margin-bottom: 6px;
+        }
+
+        .settings-item-info p {
+          font-size: 13px;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .settings-divider {
+          height: 1px;
+          background: var(--border);
+        }
+
+        .settings-action-card {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 24px;
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          color: var(--text-primary);
+        }
+
+        .settings-action-card:hover {
+          border-color: var(--border-strong);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+
+        .settings-action-card.danger {
+          background: var(--expense-subtle);
+          border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .settings-action-card.danger:hover {
+          border-color: var(--expense);
+        }
+
+        .settings-action-card.danger .action-icon {
+          color: var(--expense);
+        }
+
+        .action-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: var(--bg-input);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .settings-action-card.danger .action-icon {
+          background: #fff;
+        }
+
+        .action-text h4 {
+          font-size: 15px;
+          font-weight: 600;
+          margin-bottom: 6px;
+          color: var(--text-primary);
+        }
+
+        .action-text p {
+          font-size: 13px;
+          color: var(--text-muted);
+        }
+
+        /* iOS Toggle Switch */
+        .ios-toggle {
+          position: relative;
+          display: inline-block;
+          width: 50px;
+          height: 30px;
+          flex-shrink: 0;
+        }
+
+        .ios-toggle input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .ios-slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: var(--border-strong);
+          transition: .3s;
+          border-radius: 30px;
+        }
+
+        .ios-slider:before {
+          position: absolute;
+          content: "";
+          height: 26px;
+          width: 26px;
+          left: 2px;
+          bottom: 2px;
+          background-color: white;
+          transition: .3s;
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .ios-slider {
+          background-color: var(--income);
+        }
+
+        input:checked + .ios-slider:before {
+          transform: translateX(20px);
+        }
+
+        @media (max-width: 768px) {
+          .settings-layout {
+            flex-direction: column;
+          }
+          .settings-nav {
+            width: 100%;
+          }
+        }
+      `}} />
+    </div>
   );
 }

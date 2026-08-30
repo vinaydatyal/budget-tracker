@@ -4,7 +4,10 @@ import { useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useApp, formatCurrency } from '@/context/AppContext';
 
+import { Transaction } from '@/lib/types';
+
 interface Props { 
+  transactions: Transaction[];
   activeRange: { start: Date; end: Date };
   accountIds?: string[];
   categoryIds?: string[];
@@ -24,11 +27,14 @@ function CustomLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: an
   );
 }
 
-export function SpendingDonut({ activeRange, accountIds, categoryIds }: Props) {
+export function SpendingDonut({ transactions, activeRange, accountIds, categoryIds }: Props) {
   const { state } = useApp();
 
   const data = useMemo(() => {
-    let txns = state.transactions.filter(t => t.type === 'expense');
+    let txns = transactions.filter(t => {
+      if (t.type !== 'expense') return false;
+      return true;
+    });
     
     txns = txns.filter(t => {
       const d = new Date(t.date);
@@ -50,7 +56,7 @@ export function SpendingDonut({ activeRange, accountIds, categoryIds }: Props) {
       })
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
-  }, [state.transactions, state.categories, activeRange, accountIds, categoryIds]);
+  }, [transactions, state.categories, activeRange, accountIds, categoryIds]);
 
   if (data.length === 0) {
     return (

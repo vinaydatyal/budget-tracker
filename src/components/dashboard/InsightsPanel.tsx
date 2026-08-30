@@ -12,7 +12,16 @@ interface Insight {
   type: 'positive' | 'negative' | 'neutral' | 'warning';
 }
 
-export function InsightsPanel() {
+import { Transaction } from '@/lib/types';
+
+interface Props {
+  transactions: Transaction[];
+  activeRange?: { start: Date; end: Date };
+  accountIds?: string[];
+  categoryIds?: string[];
+}
+
+export function InsightsPanel({ transactions, activeRange, accountIds, categoryIds }: Props) {
   const { state } = useApp();
 
   const insights = useMemo(() => {
@@ -21,8 +30,35 @@ export function InsightsPanel() {
     const thisMonth = format(today, 'yyyy-MM');
     const lastMonth = format(subMonths(today, 1), 'yyyy-MM');
 
-    const thisTxns = state.transactions.filter(t => t.date.startsWith(thisMonth));
-    const lastTxns = state.transactions.filter(t => t.date.startsWith(lastMonth));
+    let thisTxns = transactions;
+    let lastTxns = transactions.filter(t => t.date.startsWith(lastMonth));
+
+    if (activeRange) {
+      thisTxns = thisTxns.filter(t => {
+        const d = new Date(t.date);
+        return d >= activeRange.start && d <= activeRange.end;
+      });
+      
+      const diffMs = activeRange.end.getTime() - activeRange.start.getTime();
+      const prevEnd = new Date(activeRange.start.getTime() - 1);
+      const prevStart = new Date(prevEnd.getTime() - diffMs);
+      
+      lastTxns = transactions.filter(t => {
+        const d = new Date(t.date);
+        return d >= prevStart && d <= prevEnd;
+      });
+    } else {
+      thisTxns = thisTxns.filter(t => t.date.startsWith(thisMonth));
+    }
+
+    if (accountIds && accountIds.length > 0) {
+      thisTxns = thisTxns.filter(t => accountIds.includes(t.accountId));
+      lastTxns = lastTxns.filter(t => accountIds.includes(t.accountId));
+    }
+    if (categoryIds && categoryIds.length > 0) {
+      thisTxns = thisTxns.filter(t => categoryIds.includes(t.categoryId));
+      lastTxns = lastTxns.filter(t => categoryIds.includes(t.categoryId));
+    }
 
     const thisExpenses = thisTxns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const thisIncome = thisTxns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
@@ -83,7 +119,7 @@ export function InsightsPanel() {
 
     // Highest spend day of week
     const dayTotals: Record<string, number> = {};
-    state.transactions.filter(t => t.type === 'expense').forEach(t => {
+    transactions.filter(t => t.type === 'expense').forEach(t => {
       const day = format(new Date(t.date), 'EEEE');
       dayTotals[day] = (dayTotals[day] || 0) + t.amount;
     });
@@ -106,13 +142,15 @@ export function InsightsPanel() {
       results.push({ icon: Calendar, color: '#f97316', type: 'warning', text: `🔔 You have ${formatCurrency(upcomingTotal, state.currency)} in recurring bills due this week.` });
     }
 
+
+
     return results.sort((a, b) => {
       // Prioritize warnings
       if (a.type === 'warning' && b.type !== 'warning') return -1;
       if (a.type !== 'warning' && b.type === 'warning') return 1;
       return 0;
     }).slice(0, 4);
-  }, [state.transactions, state.categories, state.recurringTransactions, state.budgetGoals, state.currency]);
+  }, [transactions, activeRange, accountIds, categoryIds, state.currency, state.categories, state.recurringTransactions, state.budgetGoals]);
 
   if (insights.length === 0) return null;
 

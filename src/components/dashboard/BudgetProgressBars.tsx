@@ -2,13 +2,17 @@ import React, { useMemo } from 'react';
 import { useApp, formatCurrency } from '@/context/AppContext';
 import { differenceInDays, format } from 'date-fns';
 
+import { Transaction, Category } from '@/lib/types';
+
 interface Props {
+  transactions: Transaction[];
+  categories: Category[];
   activeRange: { start: Date; end: Date };
   accountIds?: string[];
   categoryIds?: string[];
 }
 
-export function BudgetProgressBars({ activeRange, accountIds, categoryIds }: Props) {
+export function BudgetProgressBars({ transactions, categories, activeRange, accountIds, categoryIds }: Props) {
   const { state } = useApp();
 
   const budgets = useMemo(() => {
@@ -16,12 +20,12 @@ export function BudgetProgressBars({ activeRange, accountIds, categoryIds }: Pro
     const ratio = diffDays / 30.44; // Scale budget based on how many days are selected vs average month
 
     const activeCategoryIds = new Set<string>(
-      state.categories.filter(c => c.monthlyBudget && c.monthlyBudget > 0).map(c => c.id)
+      (categories || []).filter(c => c.monthlyBudget && c.monthlyBudget > 0).map(c => c.id)
     );
 
     if (activeCategoryIds.size === 0) return [];
 
-    let periodTxns = state.transactions.filter(t => {
+    let periodTxns = transactions.filter(t => {
       const d = new Date(t.date);
       return d >= activeRange.start && d <= activeRange.end && t.type === 'expense';
     });
@@ -35,7 +39,7 @@ export function BudgetProgressBars({ activeRange, accountIds, categoryIds }: Pro
     });
 
     const results = Array.from(activeCategoryIds).map(catId => {
-      const c = state.categories.find(cat => cat.id === catId);
+      const c = categories.find(cat => cat.id === catId);
       if (!c) return null;
 
       const spent = spentMap[c.id] || 0;
@@ -64,7 +68,7 @@ export function BudgetProgressBars({ activeRange, accountIds, categoryIds }: Pro
     }
 
     return finalResults.sort((a, b) => b.percent - a.percent); 
-  }, [state.categories, state.transactions, activeRange, accountIds, categoryIds]);
+  }, [categories, transactions, activeRange, accountIds, categoryIds]);
 
   if (budgets.length === 0) {
     return (

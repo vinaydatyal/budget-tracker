@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { ArrowRight, Wallet, Tag, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ArrowRight, Wallet, Tag, CheckCircle, LogIn, Globe, Settings as SettingsIcon, Check } from 'lucide-react';
+import { COMMON_CURRENCIES } from '@/lib/currency';
 
 const STARTER_CATEGORIES = [
   { name: 'Food & Dining', icon: '🍔', color: '#ef4444', type: 'expense' as const },
@@ -11,44 +13,59 @@ const STARTER_CATEGORIES = [
   { name: 'Healthcare', icon: '💊', color: '#22c55e', type: 'expense' as const },
   { name: 'Entertainment', icon: '🎬', color: '#ec4899', type: 'expense' as const },
   { name: 'Utilities', icon: '💡', color: '#f59e0b', type: 'expense' as const },
-  { name: 'Salary', icon: '💼', color: '#22c55e', type: 'income' as const },
-  { name: 'Freelance', icon: '🖥️', color: '#6366f1', type: 'income' as const },
+  { name: 'Business', icon: '💼', color: '#6366f1', type: 'income' as const },
 ];
 
 const ACCOUNT_TYPES = ['checking', 'savings', 'credit', 'investment', 'cash'];
 
 export function OnboardingWizard() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, updatePreferences } = useApp();
+  const { user, signInWithGoogle } = useAuth();
+  
   const [step, setStep] = useState(1);
+  const [currency, setCurrency] = useState(state.currency || 'USD');
   const [accountName, setAccountName] = useState('Main Checking');
   const [accountType, setAccountType] = useState('checking');
   const [accountColor, setAccountColor] = useState('#6366f1');
   const [selectedCats, setSelectedCats] = useState<number[]>([0, 1, 2, 6, 7]);
-  const [done, setDone] = useState(false);
+  const [enableBusiness, setEnableBusiness] = useState(!!state.preferences.enableBusinessMode);
 
-  // Only show for truly new users
-  if (state.accounts.length > 0 || done) return null;
+  // If already completed onboarding, don't show
+  if (state.preferences.hasCompletedOnboarding) return null;
 
   function toggleCat(i: number) {
     setSelectedCats(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
   }
 
   function handleFinish() {
-    // Create account (no balance field in Account type)
-    const accId = `acc-${Date.now()}`;
-    dispatch({
-      type: 'ADD_ACCOUNT',
-      payload: { id: accId, name: accountName, assetType: accountType as any, incomeSource: 'salary', color: accountColor }
-    });
-    // Create categories
-    selectedCats.forEach((i, idx) => {
-      const cat = STARTER_CATEGORIES[i];
+    // Dispatch Currency
+    dispatch({ type: 'SET_CURRENCY', payload: currency });
+
+    // Only create account if they don't have any yet
+    if (state.accounts.length === 0) {
+      const accId = `acc-${Date.now()}`;
       dispatch({
-        type: 'ADD_CATEGORY',
-        payload: { id: `cat-${Date.now()}-${idx}`, name: cat.name, icon: cat.icon, color: cat.color, type: cat.type }
+        type: 'ADD_ACCOUNT',
+        payload: { id: accId, name: accountName, assetType: accountType as any, incomeSource: 'salary', color: accountColor }
       });
+    }
+
+    // Only create categories if they don't have any yet
+    if (state.categories.length === 0) {
+      selectedCats.forEach((i, idx) => {
+        const cat = STARTER_CATEGORIES[i];
+        dispatch({
+          type: 'ADD_CATEGORY',
+          payload: { id: `cat-${Date.now()}-${idx}`, name: cat.name, icon: cat.icon, color: cat.color, type: cat.type }
+        });
+      });
+    }
+
+    // Update Preferences
+    updatePreferences({
+      enableBusinessMode: enableBusiness,
+      hasCompletedOnboarding: true
     });
-    setDone(true);
   }
 
   return (
@@ -71,61 +88,79 @@ export function OnboardingWizard() {
           ))}
         </div>
 
-        {/* Step 1: Account */}
+        {/* Step 1: Welcome & Currency */}
         {step === 1 && (
           <>
             <div style={{ textAlign: 'center', marginBottom: 32 }}>
               <div style={{ width: 60, height: 60, borderRadius: 16, background: 'var(--accent-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                 <Wallet size={28} color="var(--accent)" />
               </div>
-              <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px' }}>Welcome to BudgetPro! 👋</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 15, margin: 0 }}>Let's set up your first account to get started.</p>
+              <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px' }}>Welcome to Solv! 👋</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: 15, margin: 0 }}>Let's set up your financial hub.</p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {!user && (
+                <div style={{ background: 'var(--bg-modifier-hover)', padding: 16, borderRadius: 12, textAlign: 'center' }}>
+                  <button onClick={signInWithGoogle} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', padding: 12 }}>
+                    <LogIn size={18} /> Sign in with Google (Recommended)
+                  </button>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, marginBottom: 0 }}>
+                    Securely backup your data to the cloud. You can also continue as a Guest.
+                  </p>
+                </div>
+              )}
+
               <div className="form-group">
-                <label className="form-label">Account Name</label>
-                <input className="form-input" value={accountName} onChange={e => setAccountName(e.target.value)} placeholder="e.g. Main Checking" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Account Type</label>
-                <select className="form-select" value={accountType} onChange={e => setAccountType(e.target.value)}>
-                  {ACCOUNT_TYPES.map(t => <option key={t} value={t} style={{ textTransform: 'capitalize' }}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Globe size={16} /> Primary Base Currency
+                </label>
+                <select className="form-select" value={currency} onChange={e => setCurrency(e.target.value)}>
+                  {COMMON_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} - {c.name}</option>)}
                 </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Color</label>
-                <input type="color" value={accountColor} onChange={e => setAccountColor(e.target.value)} style={{ width: 48, height: 40, border: 'none', background: 'none', cursor: 'pointer' }} />
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>You can log transactions in any currency later.</p>
               </div>
             </div>
           </>
         )}
 
-        {/* Step 2: Categories */}
+        {/* Step 2: Account & Categories */}
         {step === 2 && (
           <>
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <div style={{ width: 60, height: 60, borderRadius: 16, background: 'var(--accent-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <Tag size={28} color="var(--accent)" />
+              <div style={{ width: 60, height: 60, borderRadius: 16, background: 'var(--income-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Tag size={28} color="var(--income)" />
               </div>
-              <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 8px' }}>Pick Your Categories</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Choose categories to organize your transactions.</p>
+              <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 8px' }}>First Account & Categories</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Create a checking account and select starter categories.</p>
             </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div className="form-group" style={{ flex: 2 }}>
+                  <label className="form-label">Account Name</label>
+                  <input className="form-input" value={accountName} onChange={e => setAccountName(e.target.value)} placeholder="e.g. Main Checking" />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Color</label>
+                  <input type="color" value={accountColor} onChange={e => setAccountColor(e.target.value)} style={{ width: '100%', height: 40, border: 'none', background: 'none', cursor: 'pointer' }} />
+                </div>
+              </div>
+            </div>
+            
+            <label className="form-label">Starter Categories</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
               {STARTER_CATEGORIES.map((cat, i) => {
                 const sel = selectedCats.includes(i);
                 return (
                   <div key={i} onClick={() => toggleCat(i)} style={{
-                    padding: '12px 14px', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 12px', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
                     border: `2px solid ${sel ? cat.color : 'var(--border)'}`,
                     background: sel ? `${cat.color}15` : 'var(--bg-input)',
                     transition: 'all 0.15s',
                   }}>
-                    <span style={{ fontSize: 20 }}>{cat.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{cat.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{cat.type}</div>
-                    </div>
-                    {sel && <CheckCircle size={16} color={cat.color} />}
+                    <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                    <div style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{cat.name}</div>
+                    {sel && <CheckCircle size={14} color={cat.color} />}
                   </div>
                 );
               })}
@@ -133,39 +168,51 @@ export function OnboardingWizard() {
           </>
         )}
 
-        {/* Step 3: Done */}
+        {/* Step 3: Preferences */}
         {step === 3 && (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 12px' }}>You're all set!</h2>
+            <div style={{ width: 60, height: 60, borderRadius: 16, background: 'var(--info-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <SettingsIcon size={28} color="var(--info)" />
+            </div>
+            <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 12px' }}>Preferences</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 32 }}>
-              Your account and {selectedCats.length} categories are ready. Start by adding your first transaction!
+              Almost done! You can change this later in Settings.
             </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              <span>Press <kbd style={{ background: 'var(--bg-input)', padding: '2px 8px', borderRadius: 5, fontFamily: 'monospace' }}>A</kbd> anywhere to add a transaction</span>
+            
+            <div className="card" style={{ padding: 16, marginBottom: 16, textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16 }}>Business Mode</h3>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Enable advanced tools like client tracking and automated split rules.</p>
+                </div>
+                <label className="ios-toggle">
+                  <input type="checkbox" checked={enableBusiness} onChange={e => setEnableBusiness(e.target.checked)} />
+                  <span className="ios-slider"></span>
+                </label>
+              </div>
             </div>
           </div>
         )}
 
         {/* Actions */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32, gap: 12 }}>
-          {step > 1 && step < 3 && (
+          {step > 1 && (
             <button className="btn btn-secondary" onClick={() => setStep(s => s - 1)}>Back</button>
           )}
           <div style={{ flex: 1 }} />
           {step < 3 && (
             <button
               className="btn btn-primary"
-              disabled={step === 1 && !accountName.trim()}
-              onClick={() => { if (step === 2) handleFinish(); setStep(s => s + 1); }}
+              disabled={(step === 1 && !currency) || (step === 2 && !accountName.trim())}
+              onClick={() => setStep(s => s + 1)}
               style={{ display: 'flex', alignItems: 'center', gap: 8 }}
             >
-              {step === 2 ? 'Finish Setup' : 'Next'} <ArrowRight size={16} />
+              Next <ArrowRight size={16} />
             </button>
           )}
           {step === 3 && (
-            <button className="btn btn-primary" onClick={() => setDone(true)}>
-              Start Tracking 🚀
+            <button className="btn btn-primary" onClick={handleFinish}>
+              Finish Setup <Check size={16} />
             </button>
           )}
         </div>

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, signInWithPopup, signOut as fbSignOut } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
+import { toast } from 'react-hot-toast';
 
 interface AuthContextValue {
   user: User | null;
@@ -34,7 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
-    if (!auth) return;
+    if (!auth) {
+      toast.error('Firebase is not configured! Please add your Firebase config to src/lib/firebase.ts to enable Google Sign-In and Cloud Sync.', { duration: 6000 });
+      return;
+    }
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {

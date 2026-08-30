@@ -8,9 +8,10 @@ import { format, differenceInMonths } from 'date-fns';
 interface Props {
   goal: SavingsGoal;
   onEdit: () => void;
+  onLogContribution?: () => void;
 }
 
-export function GoalCard({ goal, onEdit }: Props) {
+export function GoalCard({ goal, onEdit, onLogContribution }: Props) {
   const { state, deleteSavingsGoal } = useApp();
   const pct = Math.min(100, Math.max(0, (goal.currentAmount / goal.targetAmount) * 100));
   
@@ -38,11 +39,24 @@ export function GoalCard({ goal, onEdit }: Props) {
           )}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
+          {onLogContribution && (
+            <button 
+              className="btn btn-sm" 
+              onClick={onLogContribution}
+              style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', marginRight: 4, height: 28, fontSize: 12, padding: '0 8px' }}
+            >
+              Log Contribution
+            </button>
+          )}
           <button className="btn btn-icon btn-sm" onClick={onEdit} aria-label="Edit">
             <Pencil size={14} />
           </button>
           <button className="btn btn-icon btn-sm" onClick={() => {
-            if (confirm(`Delete goal "${goal.name}"?`)) deleteSavingsGoal(goal.id);
+            const hasLinked = state.recurringTransactions.some(r => r.linkedSavingsGoalId === goal.id);
+            const msg = hasLinked 
+              ? `Delete goal "${goal.name}"? This will also CANCEL your automated SIP/RD subscription.` 
+              : `Delete goal "${goal.name}"?`;
+            if (confirm(msg)) deleteSavingsGoal(goal.id);
           }} aria-label="Delete" style={{ color: 'var(--expense)' }}>
             <Trash2 size={14} />
           </button>

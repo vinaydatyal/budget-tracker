@@ -31,6 +31,28 @@ export default function RecurringPage() {
 
   const filteredCats = state.categories.filter(c => c.type === type || c.type === 'both');
 
+  // Calculate True Costs and Investments
+  function getMonthlySum(txns: RecurringTransaction[]) {
+    return txns.reduce((sum, r) => {
+      let multiplier = 1;
+      if (r.frequency === 'daily') multiplier = 30;
+      else if (r.frequency === 'weekly') multiplier = 4.33;
+      else if (r.frequency === 'yearly') multiplier = 1/12;
+      return sum + (r.amount * multiplier);
+    }, 0);
+  }
+
+  const isSIP = (r: RecurringTransaction) => !!r.linkedSavingsGoalId || /\b(sip|rd|saving|invest)\b/i.test(r.description);
+  const isEMI = (r: RecurringTransaction) => r.isEmi || !!r.linkedDebtId || /\b(emi|loan|mortgage|debt)\b/i.test(r.description);
+
+  const sunkCosts = state.recurringTransactions.filter(r => r.active && r.type === 'expense' && !isSIP(r) && !isEMI(r));
+  const investments = state.recurringTransactions.filter(r => r.active && isSIP(r));
+  const debtPayments = state.recurringTransactions.filter(r => r.active && isEMI(r));
+
+  const monthlySunkCost = getMonthlySum(sunkCosts);
+  const monthlyInvestments = getMonthlySum(investments);
+  const monthlyDebtPayments = getMonthlySum(debtPayments);
+
   function openNew() {
     setEditing(null);
     setType('expense');
@@ -183,6 +205,21 @@ export default function RecurringPage() {
         </div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="card" style={{ padding: 20, borderLeft: '4px solid var(--expense)' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>True Monthly Cost (Sunk)</div>
+          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: 'var(--expense)' }}>{formatCurrency(monthlySunkCost, state.currency)}</div>
+        </div>
+        <div className="card" style={{ padding: 20, borderLeft: '4px solid var(--income)' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Monthly Auto-Savings (SIP)</div>
+          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: 'var(--income)' }}>{formatCurrency(monthlyInvestments, state.currency)}</div>
+        </div>
+        <div className="card" style={{ padding: 20, borderLeft: '4px solid var(--warning)' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Monthly Auto-EMIs</div>
+          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: 'var(--text-main)' }}>{formatCurrency(monthlyDebtPayments, state.currency)}</div>
+        </div>
+      </div>
+
       {suggestions.length > 0 && (
         <div className="card animate-in" style={{ marginBottom: 24, border: '1px solid var(--income)', background: 'var(--income-subtle)' }}>
           <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
@@ -236,7 +273,13 @@ export default function RecurringPage() {
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 600 }}>{r.description}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
-                      <span className={`badge badge-${r.type}`}>{r.type}</span>
+                      {isSIP(r) ? (
+                        <span className="badge badge-income" style={{ background: 'var(--income)', color: 'white' }}>SIP / Savings</span>
+                      ) : isEMI(r) ? (
+                        <span className="badge badge-expense" style={{ background: 'var(--expense)', color: 'white' }}>EMI / Debt</span>
+                      ) : (
+                        <span className={`badge badge-${r.type}`}>{r.type}</span>
+                      )}
                       <span>•</span>
                       {r.isEmi ? (
                         <span style={{ color: 'var(--warning)', fontWeight: 600 }}>EMI ({r.paidInstallments}/{r.totalInstallments} paid)</span>
@@ -252,7 +295,7 @@ export default function RecurringPage() {
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: r.type === 'income' ? 'var(--income)' : 'var(--expense)' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: (r.type === 'income' || isSIP(r)) ? 'var(--income)' : 'var(--expense)' }}>
                     {r.type === 'income' ? '+' : '-'}{formatCurrency(r.amount, state.currency)}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>

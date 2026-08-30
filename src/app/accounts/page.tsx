@@ -24,9 +24,10 @@ const ASSET_ICONS: Record<AssetType, React.ReactNode> = {
 };
 
 export default function AccountsPage() {
-  const { state, addAccount, updateAccount, deleteAccount } = useApp();
+  const { state, addAccount, updateAccount, deleteAccount, personalAccounts, personalTransactions } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
+  const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
 
   const [name, setName] = useState('');
   const [assetType, setAssetType] = useState<AssetType>('checking');
@@ -57,14 +58,15 @@ export default function AccountsPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return setError('Bank/Asset name is required');
-    const payload = { name: name.trim(), assetType, incomeSource, color };
+    const payload = { name: name.trim(), assetType, incomeSource, color, isBusiness: activeTab === 'business' };
     if (editing) updateAccount({ ...payload, id: editing.id } as Account);
     else addAccount(payload as Account);
     setShowForm(false);
   }
 
   // Calculate balances per account
-  const accountBalances = state.accounts.map(acc => {
+  const filteredAccounts = state.accounts.filter(acc => activeTab === 'business' ? !!acc.isBusiness : !acc.isBusiness);
+  const accountBalances = filteredAccounts.map(acc => {
     let income = 0;
     let expense = 0;
     state.transactions.forEach(t => {
@@ -91,6 +93,23 @@ export default function AccountsPage() {
         </button>
       </div>
 
+      {state.preferences.enableBusinessMode && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+          <button 
+            className={`btn ${activeTab === 'personal' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('personal')}
+          >
+            Personal Accounts
+          </button>
+          <button 
+            className={`btn ${activeTab === 'business' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('business')}
+          >
+            Business Accounts
+          </button>
+        </div>
+      )}
+
       <div className="budget-grid">
         {accountBalances.map(acc => (
           <div key={acc.id} className="budget-card animate-in">
@@ -101,7 +120,7 @@ export default function AccountsPage() {
               <div className="budget-info">
                 <div className="budget-cat-name">{acc.name}</div>
                 <div className="budget-amounts" style={{ textTransform: 'capitalize' }}>
-                  {acc.assetType.replace('_', ' ')} • Source: {acc.incomeSource.replace('_', ' ')}
+                  {(acc.assetType || 'checking').replace('_', ' ')} • Source: {(acc.incomeSource || 'salary').replace('_', ' ')}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4 }}>

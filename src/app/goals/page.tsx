@@ -11,7 +11,8 @@ import { EmiCard } from '@/components/goals/EmiCard';
 import { GoalForm } from '@/components/goals/GoalForm';
 import { DebtForm } from '@/components/goals/DebtForm';
 import { DebtPayoffChart } from '@/components/goals/DebtPayoffChart';
-import { SavingsGoal, Debt } from '@/lib/types';
+import { TransactionForm } from '@/components/transactions/TransactionForm';
+import { SavingsGoal, Debt, Transaction } from '@/lib/types';
 
 export default function GoalsPage() {
   const { state } = useApp();
@@ -21,16 +22,25 @@ export default function GoalsPage() {
   const [showDebtForm, setShowDebtForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
-
-  const totalSavings = state.savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
-  const targetSavings = state.savingsGoals.reduce((sum, g) => sum + g.targetAmount, 0);
+  const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
   
-  const activeEmis = state.recurringTransactions.filter(r => r.isEmi && r.active);
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [paymentDebt, setPaymentDebt] = useState<Debt | null>(null);
+  const [contributionGoal, setContributionGoal] = useState<SavingsGoal | null>(null);
+
+  const filteredGoals = state.savingsGoals.filter(g => activeTab === 'business' ? !!g.isBusiness : !g.isBusiness);
+  const filteredDebts = state.debts.filter(d => activeTab === 'business' ? !!d.isBusiness : !d.isBusiness);
+  // EMIs belong to the account/category they are linked to. Since recurring transactions don't have an explicit isBusiness flag yet, we check their linkedDebt or assume personal for now, but usually they don't have isBusiness. We'll filter them by checking if their linked debt is in filteredDebts or if not linked, just assume personal for now.
+  const activeEmis = state.recurringTransactions.filter(r => r.isEmi && r.active && (!r.linkedDebtId ? activeTab === 'personal' : filteredDebts.some(d => d.id === r.linkedDebtId)));
+
+  const totalSavings = filteredGoals.reduce((sum, g) => sum + g.currentAmount, 0);
+  const targetSavings = filteredGoals.reduce((sum, g) => sum + g.targetAmount, 0);
+  
   const totalEmiBalance = activeEmis.reduce((sum, r) => sum + (Math.max(0, (r.totalInstallments || 1) - (r.paidInstallments || 0))) * r.amount, 0);
   const totalEmiPayment = activeEmis.reduce((sum, r) => sum + r.amount, 0);
 
-  const totalDebt = state.debts.reduce((sum, d) => sum + d.balance, 0) + totalEmiBalance;
-  const totalMinPayment = state.debts.reduce((sum, d) => sum + d.minimumPayment, 0) + totalEmiPayment;
+  const totalDebt = filteredDebts.reduce((sum, d) => sum + d.balance, 0) + totalEmiBalance;
+  const totalMinPayment = filteredDebts.reduce((sum, d) => sum + d.minimumPayment, 0) + totalEmiPayment;
 
   return (
     <PageWrapper className="page-body">
@@ -41,7 +51,7 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      <DebtPayoffChart />
+      {state.preferences.enableDebtSimulator && <DebtPayoffChart />}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginBottom: 32 }}>
         {/* Savings Summary */}
@@ -52,7 +62,7 @@ export default function GoalsPage() {
             </div>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Total Savings</h3>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Across {state.savingsGoals.length} goals</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Across {filteredGoals.length} goals</p>
             </div>
           </div>
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--income)' }}>
@@ -71,7 +81,7 @@ export default function GoalsPage() {
             </div>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Total Debt</h3>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Across {state.debts.length + activeEmis.length} accounts & EMIs</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Across {filteredDebts.length + activeEmis.length} accounts & EMIs</p>
             </div>
           </div>
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--expense)' }}>
@@ -82,6 +92,23 @@ export default function GoalsPage() {
           </div>
         </div>
       </div>
+
+      {state.preferences.enableBusinessMode && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+          <button 
+            className={`btn ${activeTab === 'personal' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('personal')}
+          >
+            Personal Goals & Debts
+          </button>
+          <button 
+            className={`btn ${activeTab === 'business' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('business')}
+          >
+            Business Goals & Debts
+          </button>
+        </div>
+      )}
 
       {/* Savings Goals Section */}
       <div style={{ marginBottom: 40 }}>
@@ -94,7 +121,7 @@ export default function GoalsPage() {
           </button>
         </div>
         
-        {state.savingsGoals.length === 0 ? (
+        {filteredGoals.length === 0 ? (
           <div className="empty-state" style={{ padding: '40px 20px', minHeight: 'auto' }}>
             <div className="empty-state-icon">🎯</div>
             <div className="empty-state-title">No savings goals yet</div>
@@ -102,8 +129,13 @@ export default function GoalsPage() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-            {state.savingsGoals.map(goal => (
-              <GoalCard key={goal.id} goal={goal} onEdit={() => { setEditingGoal(goal); setShowGoalForm(true); }} />
+            {filteredGoals.map(goal => (
+              <GoalCard 
+                key={goal.id} 
+                goal={goal} 
+                onEdit={() => { setEditingGoal(goal); setShowGoalForm(true); }} 
+                onLogContribution={() => { setContributionGoal(goal); setShowTransactionForm(true); }}
+              />
             ))}
           </div>
         )}
@@ -120,7 +152,7 @@ export default function GoalsPage() {
           </button>
         </div>
 
-        {state.debts.length === 0 && activeEmis.length === 0 ? (
+        {filteredDebts.length === 0 && activeEmis.length === 0 ? (
           <div className="empty-state" style={{ padding: '40px 20px', minHeight: 'auto' }}>
             <div className="empty-state-icon">💳</div>
             <div className="empty-state-title">Debt free!</div>
@@ -131,8 +163,13 @@ export default function GoalsPage() {
             {activeEmis.map(emi => (
               <EmiCard key={emi.id} emi={emi} />
             ))}
-            {state.debts.map(debt => (
-              <DebtCard key={debt.id} debt={debt} onEdit={() => { setEditingDebt(debt); setShowDebtForm(true); }} />
+            {filteredDebts.map(debt => (
+              <DebtCard 
+                key={debt.id} 
+                debt={debt} 
+                onEdit={() => { setEditingDebt(debt); setShowDebtForm(true); }} 
+                onLogPayment={() => { setPaymentDebt(debt); setShowTransactionForm(true); }}
+              />
             ))}
           </div>
         )}
@@ -141,6 +178,7 @@ export default function GoalsPage() {
       {showGoalForm && (
         <GoalForm
           editing={editingGoal}
+          isBusinessMode={activeTab === 'business'}
           onClose={() => { setShowGoalForm(false); setEditingGoal(null); }}
           onSave={() => toast(editingGoal ? 'Goal updated' : 'Goal created', 'success')}
         />
@@ -149,8 +187,38 @@ export default function GoalsPage() {
       {showDebtForm && (
         <DebtForm
           editing={editingDebt}
+          isBusinessMode={activeTab === 'business'}
           onClose={() => { setShowDebtForm(false); setEditingDebt(null); }}
           onSave={() => toast(editingDebt ? 'Debt updated' : 'Debt added', 'success')}
+        />
+      )}
+      
+      {showTransactionForm && paymentDebt && (
+        <TransactionForm
+          onClose={() => { setShowTransactionForm(false); setPaymentDebt(null); setContributionGoal(null); }}
+          defaultValues={{
+            type: 'expense',
+            linkedDebtId: paymentDebt.id,
+            amount: paymentDebt.minimumPayment,
+            description: `Payment for ${paymentDebt.name}`
+          }}
+          onSave={() => {
+            toast('Payment logged successfully', 'success');
+          }}
+        />
+      )}
+
+      {showTransactionForm && contributionGoal && (
+        <TransactionForm
+          onClose={() => { setShowTransactionForm(false); setPaymentDebt(null); setContributionGoal(null); }}
+          defaultValues={{
+            type: 'transfer',
+            linkedSavingsGoalId: contributionGoal.id,
+            description: `Contribution to ${contributionGoal.name}`
+          }}
+          onSave={() => {
+            toast('Contribution logged successfully', 'success');
+          }}
         />
       )}
     </PageWrapper>

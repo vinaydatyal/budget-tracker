@@ -8,10 +8,10 @@ export async function POST(req: Request) {
   try {
     const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
     const anthropicWorkspaceId = process.env.ANTHROPIC_WORKSPACE_ID || '';
-    const openrouterKey = process.env.OPENROUTER_API_KEY || '';
+    const hfKey = process.env.HUGGINGFACE_API_KEY || '';
     
-    if (!anthropicKey && !openrouterKey) {
-      throw new Error("Missing AI API Key in Vercel environment variables. Please add ANTHROPIC_API_KEY or OPENROUTER_API_KEY to your project settings.");
+    if (!anthropicKey && !openrouterKey && !hfKey) {
+      throw new Error("Missing AI API Key in Vercel environment variables. Please add ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or HUGGINGFACE_API_KEY.");
     }
     const { context } = await req.json();
 
@@ -35,61 +35,111 @@ ${JSON.stringify(context, null, 2)}
 Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
 
     let reply = "";
+    let anthropicFailed = false;
+    let openrouterFailed = false;
 
+    // 1. Try Anthropic
     if (anthropicKey) {
-      // Use Anthropic API
-      const headers: Record<string, string> = {
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-      };
+      try {
+        const headers: Record<string, string> = {
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json"
+        };
 
-      if (anthropicWorkspaceId) {
-        headers["anthropic-workspace-id"] = anthropicWorkspaceId;
+        if (anthropicWorkspaceId) {
+          headers["anthropic-workspace-id"] = anthropicWorkspaceId;
+        }
+
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            model: "claude-3-haiku-20240307", // fast and cheap model, perfect for this
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: [
+              { role: "user", content: "Generate insights based on the provided context." }
+            ],
+            temperature: 0.3
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Anthropic API Error: ${response.status} ${response.statusText} - ${errText}`);
+        }
+
+        const data = await response.json();
+        reply = data.content?.[0]?.text || "";
+      } catch (err: any) {
+        console.warn("Anthropic API failed, falling back...", err.message);
+        anthropicFailed = true;
+      }
+    }
+
+    // 2. Try OpenRouter (if Anthropic failed or key is missing)
+    if (!reply && (openrouterKey || anthropicFailed)) {
+      if (!openrouterKey) {
+        openrouterFailed = true;
+      } else {
+        try {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${openrouterKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "openai/gpt-4o-mini",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: "Generate insights based on the provided context." }
+              ],
+              temperature: 0.3
+            })
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errText}`);
+          }
+
+          const data = await response.json();
+          reply = data.choices?.[0]?.message?.content || "";
+        } catch (err: any) {
+          console.warn("OpenRouter API failed, falling back...", err.message);
+          openrouterFailed = true;
+        }
+      }
+    }
+
+    // 3. Try Hugging Face (if both Anthropic and OpenRouter failed or are missing)
+    if (!reply && (hfKey || openrouterFailed)) {
+      if (!hfKey) {
+        throw new Error("All AI APIs failed or are missing keys. Please check ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or HUGGINGFACE_API_KEY.");
       }
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model: "claude-3-haiku-20240307", // fast and cheap model, perfect for this
-          max_tokens: 1024,
-          system: systemPrompt,
-          messages: [
-            { role: "user", content: "Generate insights based on the provided context." }
-          ],
-          temperature: 0.3
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Anthropic API Error: ${response.status} ${response.statusText} - ${errText}`);
-      }
-
-      const data = await response.json();
-      reply = data.content?.[0]?.text || "";
-    } else {
-      // Fallback to OpenRouter
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch("https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${openrouterKey}`,
+          "Authorization": `Bearer ${hfKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "openai/gpt-4o-mini",
+          model: "meta-llama/Meta-Llama-3-8B-Instruct",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Generate insights based on the provided context." }
           ],
-          temperature: 0.3
+          temperature: 0.3,
+          max_tokens: 1024
         })
       });
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errText}`);
+        throw new Error(`Hugging Face API Error: ${response.status} ${response.statusText} - ${errText}`);
       }
 
       const data = await response.json();

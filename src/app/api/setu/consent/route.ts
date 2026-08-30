@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 const SETU_CLIENT_ID = '228b89b5-dee7-4f1e-a1bd-27b7d309ee43';
 const SETU_CLIENT_SECRET = 'qjLRin7sV7t1iXzzMhK25bx5E1lRpFcA';
+const SETU_PRODUCT_ID = 'cc9436fd-c0c7-458e-b8eb-e08c20844313';
 
 export async function POST(req: Request) {
   try {
@@ -43,7 +44,8 @@ export async function POST(req: Request) {
       headers: {
         'Content-Type': 'application/json',
         'x-client-id': SETU_CLIENT_ID,
-        'x-client-secret': SETU_CLIENT_SECRET
+        'x-client-secret': SETU_CLIENT_SECRET,
+        'x-product-instance-id': SETU_PRODUCT_ID
       },
       body: JSON.stringify(payload)
     });

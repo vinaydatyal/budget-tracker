@@ -42,8 +42,10 @@ export function AiInsightsWidget() {
       try {
         // Summarize context to avoid huge payloads
         const now = new Date();
-        const thirtyDaysFromNow = addDays(now, 30);
-        const thirtyDaysAgo = addDays(now, -30);
+        // Zero out time for exact day calculation
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const thirtyDaysFromNow = addDays(today, 30);
+        const thirtyDaysAgo = addDays(today, -30);
 
         const upcomingRecurring = state.recurringTransactions.filter(r => r.active && isBefore(new Date(r.nextDueDate), thirtyDaysFromNow));
         const activeDebts = state.debts.filter(d => d.balance > 0);
@@ -61,6 +63,7 @@ export function AiInsightsWidget() {
         });
 
         const context = {
+          currentDate: today.toISOString().split('T')[0],
           currency: state.currency || 'USD',
           recent30DaysActivity: {
             totalSpent: recentSpend,

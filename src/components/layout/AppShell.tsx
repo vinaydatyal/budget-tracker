@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile Overlay */}
       {isSidebarOpen && !isSidebarCollapsed && (
         <div
-          className="sidebar-overlay"
+          className="sidebar-overlay active"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}

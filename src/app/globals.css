@@ -171,7 +171,8 @@ body {
   .page-body { padding: 16px; }
   .mobile-header { display: flex !important; }
   
-  .sidebar-collapse-btn { display: flex !important; }
+  .sidebar-collapse-btn { display: none !important; }
+  .sidebar.open .sidebar-collapse-btn { display: flex !important; }
 }
 
 /* ===== SIDEBAR ===== */

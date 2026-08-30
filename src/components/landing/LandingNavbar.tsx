@@ -39,8 +39,9 @@ export function LandingNavbar() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-        <Link 
-          href="#" 
+        <a 
+          href="/solv-app.apk" 
+          download="solv-app.apk"
           style={{
             color: 'var(--text-muted)',
             fontWeight: 600,
@@ -52,7 +53,7 @@ export function LandingNavbar() {
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
         >
           Download App
-        </Link>
+        </a>
         <Link 
           href="/dashboard" 
           style={{

@@ -39,7 +39,20 @@ export function LandingNavbar() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-        {/* Placeholder for future links like Pricing, FAQ */}
+        <Link 
+          href="#" 
+          style={{
+            color: 'var(--text-muted)',
+            fontWeight: 600,
+            textDecoration: 'none',
+            transition: 'color 0.2s',
+            fontSize: '15px'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+        >
+          Download App
+        </Link>
         <Link 
           href="/dashboard" 
           style={{

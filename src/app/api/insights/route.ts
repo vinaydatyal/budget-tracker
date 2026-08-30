@@ -48,9 +48,13 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
           headers["anthropic-workspace-id"] = anthropicWorkspaceId;
         }
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers,
+          signal: controller.signal,
           body: JSON.stringify({
             model: "claude-3-haiku-20240307", // fast and cheap model, perfect for this
             max_tokens: 1024,
@@ -61,6 +65,7 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
             temperature: 0.3
           })
         });
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errText = await response.text();
@@ -81,12 +86,16 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
         openrouterFailed = true;
       } else {
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${openrouterKey}`,
               "Content-Type": "application/json"
             },
+            signal: controller.signal,
             body: JSON.stringify({
               model: "openai/gpt-4o-mini",
               messages: [
@@ -96,6 +105,7 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
               temperature: 0.3
             })
           });
+          clearTimeout(timeoutId);
 
           if (!response.ok) {
             const errText = await response.text();
@@ -117,12 +127,16 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
         throw new Error("All AI APIs failed or are missing keys. Please check ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or HUGGINGFACE_API_KEY.");
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for HF
+
       const response = await fetch("https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${hfKey}`,
           "Content-Type": "application/json"
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: "meta-llama/Meta-Llama-3-8B-Instruct",
           messages: [
@@ -133,6 +147,7 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
           max_tokens: 1024
         })
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errText = await response.text();
@@ -159,6 +174,10 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
     return NextResponse.json(JSON.parse(reply));
   } catch (error: any) {
     console.error('Insights API Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    let message = error.message;
+    if (error.name === 'AbortError' || message.includes('fetch failed')) {
+      message = "The AI servers are currently warming up or taking too long to respond. Please try again in a few seconds.";
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,0 +1,69 @@
+import { NextResponse } from 'next/server';
+
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+
+export async function POST(req: Request) {
+  try {
+    const { context } = await req.json();
+
+    const systemPrompt = `You are an expert personal financial advisor and AI assistant. 
+Your job is to analyze the user's financial context (debts, recurring expenses, milestones, upcoming income) and generate 2-4 highly actionable and personalized notifications/insights for their dashboard.
+
+Rules:
+1. Provide insights that are directly useful (e.g., reminding them a loan payment is due soon, warning about high interest debt, celebrating a savings milestone, or alerting them about an upcoming project income).
+2. Format the response strictly as a JSON array of objects.
+3. Each object must have:
+  - id: a unique string
+  - type: 'warning' (for alerts/debts), 'positive' (for milestones/income), or 'info' (for general reminders)
+  - iconType: 'alert', 'trend_up', 'trend_down', 'check', or 'sparkle'
+  - title: a short 2-4 word title
+  - text: a concise 1-2 sentence description
+
+Context Provided:
+${JSON.stringify(context, null, 2)}
+
+Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate insights based on the provided context." }
+        ],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errText}`);
+    }
+
+    const data = await response.json();
+    let reply = data.choices?.[0]?.message?.content || "";
+    
+    // Clean up markdown block if present
+    if (reply.startsWith('```json')) {
+      reply = reply.substring(7);
+    }
+    if (reply.startsWith('```')) {
+      reply = reply.substring(3);
+    }
+    if (reply.endsWith('```')) {
+      reply = reply.substring(0, reply.length - 3);
+    }
+    
+    reply = reply.trim();
+
+    return NextResponse.json(JSON.parse(reply));
+  } catch (error: any) {
+    console.error('Insights API Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

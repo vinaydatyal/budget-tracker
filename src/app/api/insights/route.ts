@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+// Forces Vercel redeploy to pick up new environment variables
+
 export const runtime = 'edge';
 
 export async function POST(req: Request) {

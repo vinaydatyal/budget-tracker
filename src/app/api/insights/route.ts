@@ -8,6 +8,7 @@ export async function POST(req: Request) {
   try {
     const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
     const anthropicWorkspaceId = process.env.ANTHROPIC_WORKSPACE_ID || '';
+    const openrouterKey = process.env.OPENROUTER_API_KEY || '';
     const hfKey = process.env.HUGGINGFACE_API_KEY || '';
     
     if (!anthropicKey && !openrouterKey && !hfKey) {

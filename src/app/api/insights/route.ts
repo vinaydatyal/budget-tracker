@@ -43,7 +43,7 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
           "content-type": "application/json"
         },
         body: JSON.stringify({
-          model: "claude-3-5-sonnet-20240620",
+          model: "claude-3-haiku-20240307", // fast and cheap model, perfect for this
           max_tokens: 1024,
           system: systemPrompt,
           messages: [

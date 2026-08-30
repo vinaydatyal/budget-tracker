@@ -10,7 +10,8 @@ export function SetuAALinkButton() {
   const [isLinking, setIsLinking] = useState(false);
   const [step, setStep] = useState<'initial' | 'consent_sent' | 'fetching' | 'done'>('initial');
   const [phone, setPhone] = useState('');
-  const { addAccount, addTransactionsBulk, state } = useApp();
+  const [consentId, setConsentId] = useState('');
+  const { addAccount, addTransactionsBulk } = useApp();
 
   const handleLink = async () => {
     if (!phone.trim() || phone.length < 10) {
@@ -33,25 +34,39 @@ export function SetuAALinkButton() {
         throw new Error('Failed to generate consent');
       }
 
+      setConsentId(consentData.consentId);
       setStep('consent_sent');
-      toast.success('Redirecting to Setu Account Aggregator...', { duration: 3000 });
+      toast.success('Opening Setu Account Aggregator in a new tab...', { duration: 3000 });
       
-      // Simulate user on Setu page approving consent
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Open Setu URL in a new window for the user to approve
+      if (consentData.url) {
+         window.open(consentData.url, '_blank');
+      }
       
-      setStep('fetching');
-      
-      // 2. Fetch ReBIT Data
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to initiate Setu AA flow');
+      setStep('initial');
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const checkConsentStatus = async () => {
+    setStep('fetching');
+    
+    try {
+      // 2. Fetch ReBIT Data (Assuming consent is now active)
       const fetchRes = await fetch('/api/setu/fetch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consentId: consentData.consentId })
+        body: JSON.stringify({ consentId })
       });
       
       const rebitData = await fetchRes.json();
       
-      if (rebitData.status !== 'COMPLETED') {
-        throw new Error('Data fetch not completed');
+      if (rebitData.error || rebitData.status !== 'COMPLETED') {
+        throw new Error(rebitData.error || 'Data fetch not completed. Did you approve it on Setu?');
       }
 
       // 3. Parse ReBIT data and inject into our app state
@@ -60,16 +75,15 @@ export function SetuAALinkButton() {
       
       addAccount({
         id: accountId,
-        name: `HDFC Savings (${accountData.maskedAccountNumber})`,
+        name: `${accountData.Summary?.branch || 'Bank'} (${accountData.maskedAccountNumber})`,
         assetType: 'checking',
         incomeSource: 'salary',
-        color: '#004c8f' // HDFC Blue
+        color: '#004c8f' // Default Bank Blue
       });
 
       const parsedTransactions: Transaction[] = accountData.Transactions.Transaction.map((t: any) => {
-        // Simple heuristic to assign a category based on narration
         let catId = 'cat-12'; // Other
-        const narration = t.narration.toLowerCase();
+        const narration = t.narration?.toLowerCase() || '';
         if (narration.includes('swiggy') || narration.includes('zomato') || narration.includes('restaurant')) catId = 'cat-4b';
         else if (narration.includes('salary') || narration.includes('upwork')) catId = 'cat-1';
         else if (narration.includes('groceries') || narration.includes('fresh')) catId = 'cat-4a';
@@ -81,8 +95,8 @@ export function SetuAALinkButton() {
           categoryId: catId,
           accountId: accountId,
           date: t.transactionTimestamp.split('T')[0],
-          payee: t.mode,
-          description: t.narration,
+          payee: t.mode || 'Transfer',
+          description: t.narration || 'Bank Transaction',
           notes: `Ref: ${t.reference}`
         };
       });
@@ -92,12 +106,10 @@ export function SetuAALinkButton() {
       toast.success(`Successfully imported ${parsedTransactions.length} transactions via Setu!`);
       setStep('done');
       
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Failed to link via Setu AA');
-      setStep('initial');
-    } finally {
-      setIsLinking(false);
+      toast.error(err.message || 'Failed to fetch data from Setu');
+      setStep('consent_sent'); // Let them try again
     }
   };
 
@@ -136,16 +148,20 @@ export function SetuAALinkButton() {
           )}
 
           {step === 'consent_sent' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
-              <Loader2 size={16} className="animate-spin" /> 
-              <span style={{ fontSize: 14 }}>Awaiting your approval on the Setu Consent Screen...</span>
+            <div>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>
+                We've opened the Setu Consent Screen in a new tab. Please approve the data request there, then come back and click the button below.
+              </p>
+              <button className="btn btn-primary" onClick={checkConsentStatus} style={{ background: '#10b981' }}>
+                I have approved on Setu
+              </button>
             </div>
           )}
 
           {step === 'fetching' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
               <Loader2 size={16} className="animate-spin" /> 
-              <span style={{ fontSize: 14 }}>Decrypting data from your bank...</span>
+              <span style={{ fontSize: 14 }}>Decrypting and fetching data from your bank...</span>
             </div>
           )}
 

@@ -540,7 +540,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error: any) {
           if (error.message === 'DRIVE_UNAUTHORIZED') {
-            toast.error("Google Drive session expired. Please sign out and sign in again to sync.", { duration: 8000 });
+            sessionStorage.setItem('drive_expired', 'true');
+            toast.error("Google Drive session expired. Please sign in again to restore sync.", { duration: Infinity });
           } else {
             console.error("Google Drive load error:", error);
             toast.error("Failed to load from Google Drive.");
@@ -620,7 +621,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           await uploadToDrive(googleToken, driveFileId, state);
         } catch (error: any) {
           if (error.message === 'DRIVE_UNAUTHORIZED') {
-            toast.error("Google Drive session expired. Please sign out and sign in again to sync.", { duration: 8000, id: 'drive_expired' });
+            sessionStorage.setItem('drive_expired', 'true');
+            toast.error("Google Drive session expired. Please sign in again to restore sync.", { duration: Infinity, id: 'drive_expired' });
           } else {
             console.error("Google Drive sync error:", error);
           }

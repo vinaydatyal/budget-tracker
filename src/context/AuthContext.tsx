@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (token) {
         setGoogleToken(token);
         sessionStorage.setItem('google_drive_token', token);
+        sessionStorage.removeItem('drive_expired');
       }
     } catch (error) {
       console.error('Error signing in with Google', error);

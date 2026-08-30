@@ -33,6 +33,27 @@ export function OnboardingWizard() {
   // If already completed onboarding or still initializing, don't show
   if (state.preferences.hasCompletedOnboarding || isInitializing) return null;
 
+  if (typeof window !== 'undefined' && sessionStorage.getItem('drive_expired') === 'true') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div className="card" style={{ maxWidth: 400, width: '100%', padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, textAlign: 'center' }}>
+          <div style={{ padding: 16, background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%' }}>
+            <SettingsIcon size={32} color="var(--expense)" />
+          </div>
+          <div>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-main)' }}>Session Expired</h2>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Your Google Drive sync session has expired (Google limits this to 1 hour). Please re-authenticate to restore your cloud data and continue.
+            </p>
+          </div>
+          <button className="btn btn-primary" style={{ width: '100%', padding: '12px 16px' }} onClick={signInWithGoogle}>
+            Re-authenticate with Google
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function toggleCat(i: number) {
     setSelectedCats(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
   }

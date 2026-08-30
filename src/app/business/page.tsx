@@ -69,7 +69,7 @@ export default function BusinessDashboard() {
   }, [state.ledger]);
 
   // Calculate some basic business metrics
-  const { totalRevenue, sourceData, periodTxns, collectedTax, paidTax } = useMemo(() => {
+  const { totalRevenue, sourceData, periodTxns, collectedTax, paidTax, ruleStats } = useMemo(() => {
     let revenue = 0;
     const sourceTotals: Record<string, number> = {};
 

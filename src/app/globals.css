@@ -160,11 +160,18 @@ body {
 }
 
 @media (max-width: 768px) {
-  .app-shell { flex-direction: row; }
-  .main-content { margin-left: 72px !important; }
+  .app-shell { flex-direction: column; }
+  
+  .main-content { 
+    margin-left: 0; 
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+  }
+  .main-content.sidebar-mini-active { margin-left: 72px !important; }
+  
   .page-body { padding: 16px; }
-  .mobile-header { display: none !important; }
-  .sidebar-collapse-btn { display: none !important; }
+  .mobile-header { display: flex !important; }
+  
+  .sidebar-collapse-btn { display: flex !important; }
 }
 
 /* ===== SIDEBAR ===== */
@@ -228,31 +235,40 @@ body {
 
 @media (max-width: 768px) {
   .sidebar { 
-    transform: translateX(0) !important; 
-    width: 72px !important; 
-    padding: 24px 8px !important;
+    transform: translateX(-100%) !important; 
+    width: 250px !important; 
+    padding: 24px 16px !important; 
   }
-  .sidebar-overlay { display: none !important; }
   
-  .sidebar .sidebar-logo-text,
-  .sidebar .sidebar-logo-sub,
-  .sidebar .nav-label,
-  .sidebar .user-info,
-  .sidebar .sidebar-label {
+  .sidebar.open { 
+    transform: translateX(0) !important; 
+    box-shadow: var(--shadow-lg); 
+  }
+  
+  .sidebar.open.collapsed { 
+    width: 72px !important; 
+    padding: 24px 8px !important; 
+  }
+  
+  .sidebar.open.collapsed .sidebar-logo-text,
+  .sidebar.open.collapsed .sidebar-logo-sub,
+  .sidebar.open.collapsed .nav-label,
+  .sidebar.open.collapsed .user-info,
+  .sidebar.open.collapsed .sidebar-label {
     display: none !important;
   }
   
-  .sidebar .quick-add-container {
+  .sidebar.open.collapsed .quick-add-container {
     padding: 0 8px !important;
   }
   
-  .sidebar .sidebar-logo {
+  .sidebar.open.collapsed .sidebar-logo {
     padding: 0 !important;
     justify-content: center !important;
   }
   
-  .sidebar .nav-link,
-  .sidebar .btn {
+  .sidebar.open.collapsed .nav-link,
+  .sidebar.open.collapsed .btn {
     justify-content: center !important;
     padding: 10px !important;
   }

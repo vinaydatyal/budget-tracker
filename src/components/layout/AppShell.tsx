@@ -20,8 +20,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Close sidebar on route change
-  useEffect(() => { setIsSidebarOpen(false); }, [pathname]);
+  // Close full sidebar on route change, but keep mini sidebar active if it was pinned
+  useEffect(() => { 
+    if (!isSidebarCollapsed) {
+      setIsSidebarOpen(false); 
+    }
+  }, [pathname, isSidebarCollapsed]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -88,13 +92,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>Solv</div>
         </div>
-        <button className="btn-icon" onClick={() => setIsSidebarOpen(true)}>
+        <button className="btn-icon" onClick={() => {
+          if (isSidebarOpen) {
+            setIsSidebarOpen(false);
+          } else {
+            setIsSidebarOpen(true);
+            setIsSidebarCollapsed(false); // Always open full sidebar via hamburger
+          }
+        }}>
           <Menu size={20} />
         </button>
       </div>
 
       {/* Mobile Overlay */}
-      {isSidebarOpen && (
+      {isSidebarOpen && !isSidebarCollapsed && (
         <div
           className="sidebar-overlay"
           onClick={() => setIsSidebarOpen(false)}
@@ -110,7 +121,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       {/* Main Content */}
-      <div className={`main-content ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <div className={`main-content ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${isSidebarOpen && isSidebarCollapsed ? 'sidebar-mini-active' : ''}`}>
         <AnimatePresence mode="wait">
           {children}
         </AnimatePresence>

@@ -231,7 +231,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div style={{ padding: 12, background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderRadius: 8, fontSize: 13, width: '100%' }}>
-                      ✓ Your data is actively syncing to Firebase Cloud Firestore.
+                      ✓ Your data is actively syncing to your personal Google Drive.
                     </div>
                     <button className="btn btn-secondary" onClick={signOut} style={{ alignSelf: 'flex-start' }}>
                       <LogOut size={16} /> Sign Out

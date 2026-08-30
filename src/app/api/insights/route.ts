@@ -4,9 +4,11 @@ export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY || '';
-    if (!apiKey) {
-      throw new Error("Missing OPENROUTER_API_KEY in Vercel environment variables. Please add it to your project settings.");
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+    const openrouterKey = process.env.OPENROUTER_API_KEY || '';
+    
+    if (!anthropicKey && !openrouterKey) {
+      throw new Error("Missing AI API Key in Vercel environment variables. Please add ANTHROPIC_API_KEY or OPENROUTER_API_KEY to your project settings.");
     }
     const { context } = await req.json();
 
@@ -29,29 +31,61 @@ ${JSON.stringify(context, null, 2)}
 
 Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "Generate insights based on the provided context." }
-        ],
-        temperature: 0.3
-      })
-    });
+    let reply = "";
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errText}`);
+    if (anthropicKey) {
+      // Use Anthropic API
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "claude-3-haiku-20240307", // fast and cheap model, perfect for this
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [
+            { role: "user", content: "Generate insights based on the provided context." }
+          ],
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Anthropic API Error: ${response.status} ${response.statusText} - ${errText}`);
+      }
+
+      const data = await response.json();
+      reply = data.content?.[0]?.text || "";
+    } else {
+      // Fallback to OpenRouter
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openrouterKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Generate insights based on the provided context." }
+          ],
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errText}`);
+      }
+
+      const data = await response.json();
+      reply = data.choices?.[0]?.message?.content || "";
     }
-
-    const data = await response.json();
-    let reply = data.choices?.[0]?.message?.content || "";
     
     // Clean up markdown block if present
     if (reply.startsWith('```json')) {

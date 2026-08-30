@@ -119,6 +119,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: { is
     <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'visible' }}>
       {onToggleCollapse && (
         <button
+          className="sidebar-collapse-btn"
           onClick={onToggleCollapse}
           style={{
             position: 'absolute',
@@ -201,24 +202,20 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: { is
                   letterSpacing: '0.05em', 
                   color: 'var(--text-muted)', 
                   textTransform: 'uppercase',
-                  display: 'flex',
+                  display: isCollapsed ? 'none' : 'flex',
                   alignItems: 'center',
-                  justifyContent: isCollapsed ? 'center' : 'space-between',
+                  justifyContent: 'space-between',
                   cursor: 'pointer',
                   userSelect: 'none'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                  {isCollapsed ? (
-                    <GroupIcon size={16} />
-                  ) : (
-                    <span className="nav-label">{group.title}</span>
-                  )}
+                  <span className="nav-label">{group.title}</span>
                 </div>
                 {!isCollapsed && (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
               </div>
               
-              {isExpanded && (
+              {(isExpanded || isCollapsed) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {group.items.map(({ href, icon: Icon, label }) => {
                     const isActive = pathname === href || pathname.startsWith(href + '/');

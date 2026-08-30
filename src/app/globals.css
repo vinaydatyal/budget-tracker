@@ -164,6 +164,7 @@ body {
   .main-content { margin-left: 0; }
   .page-body { padding: 16px; }
   .mobile-header { display: flex; }
+  .sidebar-collapse-btn { display: none !important; }
 }
 
 /* ===== SIDEBAR ===== */

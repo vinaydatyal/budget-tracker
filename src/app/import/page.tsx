@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import Papa from 'papaparse';
-import { Upload, ArrowRight, Check, AlertCircle, Trash2, ArrowLeft } from 'lucide-react';
+import { Upload, ArrowRight, Check, AlertCircle, Trash2, ArrowLeft, Edit2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { useRouter } from 'next/navigation';
 import { Transaction } from '@/lib/types';
+import { TransactionForm } from '@/components/transactions/TransactionForm';
 
 export default function ImportPage() {
   const { state, dispatch } = useApp();
@@ -25,9 +26,11 @@ export default function ImportPage() {
   const [debitCol, setDebitCol] = useState('');
   const [creditCol, setCreditCol] = useState('');
   const [balanceCol, setBalanceCol] = useState('');
+  const [targetAccountId, setTargetAccountId] = useState(state.accounts[0]?.id || '');
 
   // Review state
   const [parsedTxns, setParsedTxns] = useState<Partial<Transaction>[]>([]);
+  const [editingTxnIndex, setEditingTxnIndex] = useState<number | null>(null);
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -113,7 +116,7 @@ export default function ImportPage() {
           amount: amt,
           type,
           categoryId: state.categories.find(c => c.type === type)?.id || '',
-          accountId: state.accounts[0]?.id || '',
+          accountId: targetAccountId || state.accounts[0]?.id || '',
           notes,
         };
       }).filter(t => t.amount > 0); // Ignore 0 amount rows
@@ -183,6 +186,16 @@ export default function ImportPage() {
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24 }}>Map Your Columns</h2>
           
           <div style={{ display: 'grid', gap: 24, maxWidth: 500 }}>
+            <div className="form-group" style={{ background: 'var(--bg-input)', padding: 16, borderRadius: 8 }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                Target Account 
+              </label>
+              <select className="form-select" value={targetAccountId} onChange={e => setTargetAccountId(e.target.value)}>
+                {state.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>All transactions in this CSV will be imported into this account.</p>
+            </div>
+
             <div className="form-group">
               <label className="form-label">Date Column</label>
               <select className="form-select" value={dateCol} onChange={e => setDateCol(e.target.value)}>
@@ -293,11 +306,16 @@ export default function ImportPage() {
                       </select>
                     </td>
                     <td>
-                      <button className="btn btn-icon btn-sm" onClick={() => {
-                        const next = [...parsedTxns];
-                        next.splice(i, 1);
-                        setParsedTxns(next);
-                      }}><Trash2 size={14} /></button>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn btn-icon btn-sm" onClick={() => setEditingTxnIndex(i)}>
+                          <Edit2 size={14} />
+                        </button>
+                        <button className="btn btn-icon btn-sm" onClick={() => {
+                          const next = [...parsedTxns];
+                          next.splice(i, 1);
+                          setParsedTxns(next);
+                        }}><Trash2 size={14} /></button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -307,6 +325,18 @@ export default function ImportPage() {
         </div>
       )}
 
+      {editingTxnIndex !== null && (
+        <TransactionForm
+          editing={parsedTxns[editingTxnIndex] as Transaction}
+          onClose={() => setEditingTxnIndex(null)}
+          onSubmitOverride={(updated) => {
+            const next = [...parsedTxns];
+            next[editingTxnIndex] = updated as Partial<Transaction>;
+            setParsedTxns(next);
+            setEditingTxnIndex(null);
+          }}
+        />
+      )}
     </PageWrapper>
   );
 }

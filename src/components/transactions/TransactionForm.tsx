@@ -19,9 +19,10 @@ interface Props {
   defaultDate?: string;
   defaultValues?: Partial<Transaction>;
   onSave?: () => void;
+  onSubmitOverride?: (txn: Omit<Transaction, 'id'> & { id?: string }) => void;
 }
 
-export function TransactionForm({ onClose, editing, defaultDate, defaultValues, onSave }: Props) {
+export function TransactionForm({ onClose, editing, defaultDate, defaultValues, onSave, onSubmitOverride }: Props) {
   const { state, addTransaction, updateTransaction, addDebt, addRecurring, addSavingsGoal, addTransactionsBulk } = useApp();
   const [type, setType] = useState<'income' | 'expense' | 'transfer'>(editing?.type ?? defaultValues?.type ?? 'expense');
   const [amount, setAmount] = useState(editing?.amount?.toString() ?? defaultValues?.amount?.toString() ?? '');
@@ -389,7 +390,10 @@ export function TransactionForm({ onClose, editing, defaultDate, defaultValues, 
       taxRate: taxRate ? parseFloat(taxRate) : undefined,
     };
 
-    if (editing) {
+    if (onSubmitOverride) {
+      onSubmitOverride({ ...payload, id: editing?.id || `temp-${Date.now()}` });
+      toast.success('Transaction saved to review');
+    } else if (editing) {
       updateTransaction({ ...payload, id: editing.id });
       toast.success('Transaction updated');
     } else {

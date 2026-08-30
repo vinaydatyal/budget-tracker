@@ -81,15 +81,16 @@ export function AiInsightsWidget() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to generate insights');
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to generate insights');
         }
 
         const data: Insight[] = await response.json();
         setInsights(data);
         sessionStorage.setItem('ai_insights', JSON.stringify(data));
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        setError('Could not generate insights right now.');
+        setError(err.message || 'Could not generate insights right now.');
       } finally {
         setIsLoading(false);
       }

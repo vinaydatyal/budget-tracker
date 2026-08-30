@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
+export const runtime = 'edge';
+
 export async function POST(req: Request) {
   try {
+    if (!OPENROUTER_API_KEY) {
+      throw new Error("Missing OPENROUTER_API_KEY environment variable.");
+    }
     const { context } = await req.json();
 
     const systemPrompt = `You are an expert personal financial advisor and AI assistant. 

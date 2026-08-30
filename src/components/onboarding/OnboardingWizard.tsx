@@ -19,7 +19,7 @@ const STARTER_CATEGORIES = [
 const ACCOUNT_TYPES = ['checking', 'savings', 'credit', 'investment', 'cash'];
 
 export function OnboardingWizard() {
-  const { state, dispatch, updatePreferences } = useApp();
+  const { state, dispatch, updatePreferences, isInitializing } = useApp();
   const { user, signInWithGoogle } = useAuth();
   
   const [step, setStep] = useState(1);
@@ -30,8 +30,8 @@ export function OnboardingWizard() {
   const [selectedCats, setSelectedCats] = useState<number[]>([0, 1, 2, 6, 7]);
   const [enableBusiness, setEnableBusiness] = useState(!!state.preferences.enableBusinessMode);
 
-  // If already completed onboarding, don't show
-  if (state.preferences.hasCompletedOnboarding) return null;
+  // If already completed onboarding or still initializing, don't show
+  if (state.preferences.hasCompletedOnboarding || isInitializing) return null;
 
   function toggleCat(i: number) {
     setSelectedCats(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);

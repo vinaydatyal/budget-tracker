@@ -458,6 +458,7 @@ interface AppContextValue {
   importData: (data: string) => boolean;
   clearData: () => void;
   loadDemoData: () => void;
+  isInitializing: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -468,8 +469,9 @@ function uid() {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, DEFAULT_STATE);
-  const { user, googleToken } = useAuth();
+  const { user, googleToken, loading: authLoading } = useAuth();
   const [driveFileId, setDriveFileId] = React.useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = React.useState(true);
 
   // Evaluate Achievements
   useEffect(() => {
@@ -491,7 +493,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   useEffect(() => {
+    if (authLoading) return;
+
     async function loadData() {
+      setIsInitializing(true);
       let saved = loadState();
 
       if (user && googleToken) {
@@ -571,10 +576,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       dispatch({ type: 'LOAD_STATE', payload: saved });
+      setIsInitializing(false);
     }
 
     loadData();
-  }, [user, googleToken]);
+  }, [user, googleToken, authLoading]);
 
   // Cloud Sync Logic
   const initialLoadRef = React.useRef(false);
@@ -865,6 +871,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         importData,
         clearData,
         loadDemoData,
+        isInitializing
       }}
     >
       {children}

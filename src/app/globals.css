@@ -234,6 +234,10 @@ body {
   backdrop-filter: blur(4px);
 }
 
+.sidebar-overlay.active {
+  display: block;
+}
+
 @media (max-width: 768px) {
   .sidebar { 
     transform: translateX(-100%) !important; 

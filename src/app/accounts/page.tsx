@@ -33,6 +33,7 @@ export default function AccountsPage() {
   const [assetType, setAssetType] = useState<AssetType>('checking');
   const [incomeSource, setIncomeSource] = useState<IncomeSource>('salary');
   const [color, setColor] = useState(PRESET_COLORS[0]);
+  const [isExpenseAccount, setIsExpenseAccount] = useState(false);
   const [error, setError] = useState('');
 
   function openNew() {
@@ -41,6 +42,7 @@ export default function AccountsPage() {
     setAssetType('checking');
     setIncomeSource('salary');
     setColor(PRESET_COLORS[0]);
+    setIsExpenseAccount(false);
     setError('');
     setShowForm(true);
   }
@@ -51,6 +53,7 @@ export default function AccountsPage() {
     setAssetType(acc.assetType || 'checking');
     setIncomeSource(acc.incomeSource || 'salary');
     setColor(acc.color);
+    setIsExpenseAccount(!!acc.isExpenseAccount);
     setError('');
     setShowForm(true);
   }
@@ -58,7 +61,7 @@ export default function AccountsPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return setError('Bank/Asset name is required');
-    const payload = { name: name.trim(), assetType, incomeSource, color, isBusiness: activeTab === 'business' };
+    const payload = { name: name.trim(), assetType, incomeSource, color, isBusiness: activeTab === 'business', isExpenseAccount };
     if (editing) updateAccount({ ...payload, id: editing.id } as Account);
     else addAccount(payload as Account);
     setShowForm(false);
@@ -118,7 +121,10 @@ export default function AccountsPage() {
                 {ASSET_ICONS[acc.assetType || 'checking']}
               </div>
               <div className="budget-info">
-                <div className="budget-cat-name">{acc.name}</div>
+                <div className="budget-cat-name" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {acc.name}
+                  {acc.isExpenseAccount && <span style={{ fontSize: 10, padding: '2px 6px', background: 'var(--expense)', color: '#fff', borderRadius: 4, textTransform: 'uppercase', fontWeight: 800 }}>Expense</span>}
+                </div>
                 <div className="budget-amounts" style={{ textTransform: 'capitalize' }}>
                   {(acc.assetType || 'checking').replace('_', ' ')} • Source: {(acc.incomeSource || 'salary').replace('_', ' ')}
                 </div>
@@ -229,6 +235,13 @@ export default function AccountsPage() {
                     />
                   ))}
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                  <input type="checkbox" checked={isExpenseAccount} onChange={e => setIsExpenseAccount(e.target.checked)} />
+                  Treat as an Expense Account (Money moved here is considered spent)
+                </label>
               </div>
 
               {error && <div style={{ color: 'var(--expense)', fontSize: 13, marginBottom: 12 }}>{error}</div>}

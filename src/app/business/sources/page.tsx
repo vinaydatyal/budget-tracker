@@ -221,45 +221,55 @@ function SplitRuleModal({ rule, onClose, onSave }: { rule: SplitRule, onClose: (
           </div>
 
           {splits.map((split, i) => (
-            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'var(--bg-input)', padding: 12, borderRadius: 8 }}>
-              <select 
-                className="form-select" 
-                value={split.targetType} 
-                onChange={e => updateSplit(i, 'targetType', e.target.value)}
-                style={{ width: 120 }}
-              >
-                <option value="account">Account</option>
-                <option value="category">Category</option>
-              </select>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg-input)', padding: 12, borderRadius: 8 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <select 
+                  className="form-select" 
+                  value={split.targetType} 
+                  onChange={e => updateSplit(i, 'targetType', e.target.value)}
+                  style={{ width: 120 }}
+                >
+                  <option value="account">Account</option>
+                  <option value="category">Category</option>
+                </select>
 
-              <select 
-                className="form-select" 
-                value={split.targetId} 
-                onChange={e => updateSplit(i, 'targetId', e.target.value)}
-                style={{ flex: 1 }}
-              >
-                <option value="" disabled>Select Target</option>
-                {split.targetType === 'account' ? (
-                  state.accounts.filter(a => a.isBusiness).map(a => <option key={a.id} value={a.id}>{a.name}</option>)
-                ) : (
-                  state.categories.filter(c => c.isBusiness).map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)
-                )}
-              </select>
+                <select 
+                  className="form-select" 
+                  value={split.targetId} 
+                  onChange={e => updateSplit(i, 'targetId', e.target.value)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="" disabled>Select Target</option>
+                  {split.targetType === 'account' ? (
+                    state.accounts.filter(a => a.isBusiness).map(a => <option key={a.id} value={a.id}>{a.name}</option>)
+                  ) : (
+                    state.categories.filter(c => c.isBusiness).map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)
+                  )}
+                </select>
 
-              <div style={{ position: 'relative', width: 80 }}>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={split.percentage || ''} 
-                  onChange={e => updateSplit(i, 'percentage', parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                />
-                <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-muted)' }}>%</span>
+                <div style={{ position: 'relative', width: 80 }}>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    value={split.percentage || ''} 
+                    onChange={e => updateSplit(i, 'percentage', parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                  <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-muted)' }}>%</span>
+                </div>
+
+                <button className="btn-icon" style={{ color: 'var(--expense)' }} onClick={() => removeSplit(i)}>
+                  <X size={16} />
+                </button>
               </div>
-
-              <button className="btn-icon" style={{ color: 'var(--expense)' }} onClick={() => removeSplit(i)}>
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4 }}>
+                <input 
+                  type="checkbox" 
+                  checked={!!split.isExpense} 
+                  onChange={e => updateSplit(i, 'isExpense', e.target.checked)} 
+                />
+                <label style={{ fontSize: 13, color: 'var(--text-muted)' }}>Treat this split as a business expense (e.g. platform fees)</label>
+              </div>
             </div>
           ))}
 

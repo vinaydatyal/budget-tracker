@@ -9,6 +9,7 @@ export interface Account {
   incomeSource: IncomeSource;
   color: string;
   isBusiness?: boolean;
+  isExpenseAccount?: boolean;
 }
 
 export interface Category {
@@ -141,6 +142,7 @@ export interface SplitRule {
     targetId: string;
     targetType: 'account' | 'category';
     percentage: number;
+    isExpense?: boolean;
   }[];
 }
 

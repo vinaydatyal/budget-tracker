@@ -412,24 +412,24 @@ export function TransactionForm({ onClose, editing, defaultDate, defaultValues, 
               if (finalAmt > 0) {
                 splitTxns.push({
                   ...payload,
-                  type: split.isExpense ? 'expense' : payload.type,
+                  type: (split.isExpense && split.targetType === 'category') ? 'expense' : payload.type,
                   amount: finalAmt,
-                  accountId: split.isExpense ? accountId : (split.targetType === 'account' ? split.targetId : accountId),
+                  accountId: (split.isExpense && split.targetType === 'category') ? accountId : (split.targetType === 'account' ? split.targetId : accountId),
                   categoryId: split.targetType === 'category' ? split.targetId : categoryId || 'split',
                   description: `${description.trim()} (Split: ${rule.name} - ${split.percentage}%)`,
-                  revenueSourceId: split.isExpense ? undefined : payload.revenueSourceId
+                  revenueSourceId: (split.isExpense && split.targetType === 'category') ? undefined : payload.revenueSourceId
                 });
               }
             } else {
               remainingAmount -= splitAmt;
               splitTxns.push({
                 ...payload,
-                type: split.isExpense ? 'expense' : payload.type,
+                type: (split.isExpense && split.targetType === 'category') ? 'expense' : payload.type,
                 amount: splitAmt,
-                accountId: split.isExpense ? accountId : (split.targetType === 'account' ? split.targetId : accountId),
+                accountId: (split.isExpense && split.targetType === 'category') ? accountId : (split.targetType === 'account' ? split.targetId : accountId),
                 categoryId: split.targetType === 'category' ? split.targetId : categoryId || 'split',
                 description: `${description.trim()} (Split: ${rule.name} - ${split.percentage}%)`,
-                revenueSourceId: split.isExpense ? undefined : payload.revenueSourceId
+                revenueSourceId: (split.isExpense && split.targetType === 'category') ? undefined : payload.revenueSourceId
               });
             }
           });

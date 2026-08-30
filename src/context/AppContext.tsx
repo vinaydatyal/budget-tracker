@@ -10,8 +10,13 @@ import { toast } from 'react-hot-toast';
 import { QUESTS } from '@/lib/achievements';
 import { LedgerEntry } from '@/lib/types';
 
-function generateLedgerEntries(txn: Transaction): LedgerEntry[] {
+function generateLedgerEntries(txn: Transaction, accounts: Account[]): LedgerEntry[] {
   if (!txn.isBusiness) return [];
+  
+  const account = accounts.find(a => a.id === txn.accountId);
+  const isExpenseAccount = account?.isExpenseAccount;
+  const toAccount = txn.toAccountId ? accounts.find(a => a.id === txn.toAccountId) : null;
+  const isToExpenseAccount = toAccount?.isExpenseAccount;
   
   const entries: LedgerEntry[] = [];
   const baseId = `ledg-${txn.id}`;
@@ -35,32 +40,43 @@ function generateLedgerEntries(txn: Transaction): LedgerEntry[] {
 
   if (txn.type === 'income') {
     if (txn.linkedDebtId) {
-      // Taking on a loan
       add('1', 'Asset', amount, 0);
       add('2', 'Liability', 0, amount);
     } else {
-      // Normal Income
-      add('1', 'Asset', amount, 0);
-      add('2', 'Revenue', 0, netAmount);
-      if (tax > 0) add('3', 'Liability', 0, tax); // Tax collected is a liability
+      if (isExpenseAccount) {
+        add('1', 'Expense', amount, 0);
+        add('2', 'Revenue', 0, netAmount);
+      } else {
+        add('1', 'Asset', amount, 0);
+        add('2', 'Revenue', 0, netAmount);
+      }
+      if (tax > 0) add('3', 'Liability', 0, tax);
     }
   } else if (txn.type === 'expense') {
     if (txn.linkedDebtId) {
-      // Paying off debt
       add('1', 'Liability', amount, 0);
       add('2', 'Asset', 0, amount);
     } else if (txn.linkedSavingsGoalId) {
-      // Transfer to savings (Asset to Asset transfer)
-      // Since GL only tracks "Asset" generally, we can ignore this or add offsetting Asset entries.
-      // Ignoring it keeps the GL clean since Asset hasn't left the business.
+      // Ignored for GL
     } else {
-      // Normal Expense
-      add('1', 'Expense', netAmount, 0);
-      if (tax > 0) add('2', 'Liability', tax, 0); // Tax paid reduces tax liability
-      add('3', 'Asset', 0, amount);
+      if (isExpenseAccount) {
+        add('1', 'Asset', netAmount, 0);
+        add('2', 'Expense', 0, amount);
+      } else {
+        add('1', 'Expense', netAmount, 0);
+        add('2', 'Asset', 0, amount);
+      }
+      if (tax > 0) add('3', 'Liability', tax, 0);
+    }
+  } else if (txn.type === 'transfer') {
+    if (isExpenseAccount && !isToExpenseAccount) {
+      add('1', 'Asset', amount, 0);
+      add('2', 'Expense', 0, amount);
+    } else if (!isExpenseAccount && isToExpenseAccount) {
+      add('1', 'Expense', amount, 0);
+      add('2', 'Asset', 0, amount);
     }
   }
-  // Transfers within business checking to cash etc don't change global GL Asset sum.
 
   return entries;
 }
@@ -90,7 +106,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       if (action.payload.isBusiness) {
         newLedger = [
           ...newLedger,
-          ...generateLedgerEntries(action.payload)
+          ...generateLedgerEntries(action.payload, state.accounts)
         ];
       }
 
@@ -123,7 +139,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const newBulkLedger = [...(state.ledger || [])];
       action.payload.forEach(txn => {
         if (txn.isBusiness) {
-          newBulkLedger.push(...generateLedgerEntries(txn));
+          newBulkLedger.push(...generateLedgerEntries(txn, state.accounts));
         }
       });
       return { 
@@ -144,7 +160,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         if (action.payload.isBusiness) {
           newLedger = [
             ...newLedger,
-            ...generateLedgerEntries(action.payload)
+            ...generateLedgerEntries(action.payload, state.accounts)
           ];
         }
       }

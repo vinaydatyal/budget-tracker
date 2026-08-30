@@ -567,7 +567,7 @@ export default function ReportsPage() {
 
       {/* Filter Bar */}
       <div style={{
-        position: 'relative', zIndex: 100,
+        position: 'relative', zIndex: 10,
         display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 20,
         padding: '16px 20px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)'
       }}>

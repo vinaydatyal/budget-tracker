@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import 'react-grid-layout/css/styles.css';
@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Solv',
   },
+};
+
+export const viewport: Viewport = {
   themeColor: '#a855f7',
 };
 

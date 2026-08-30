@@ -428,7 +428,7 @@ interface AppContextValue {
   addCategory: (c: Omit<Category, 'id'>) => void;
   updateCategory: (c: Category) => void;
   deleteCategory: (id: string) => void;
-  addAccount: (a: Omit<Account, 'id'>) => void;
+  addAccount: (a: Omit<Account, 'id'> & { id?: string }) => void;
   updateAccount: (a: Account) => void;
   deleteAccount: (id: string) => void;
   addBudgetGoal: (b: Omit<BudgetGoal, 'id'>) => void;
@@ -679,8 +679,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'DELETE_CATEGORY', payload: id });
   }, []);
 
-  const addAccount = useCallback((a: Omit<Account, 'id'>) => {
-    dispatch({ type: 'ADD_ACCOUNT', payload: { ...a, id: uid() } });
+  const addAccount = useCallback((a: Omit<Account, 'id'> & { id?: string }) => {
+    dispatch({ type: 'ADD_ACCOUNT', payload: { ...a, id: a.id || uid() } });
   }, []);
 
   const updateAccount = useCallback((a: Account) => {

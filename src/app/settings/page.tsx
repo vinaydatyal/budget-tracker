@@ -19,6 +19,7 @@ import {
   User as UserIcon
 } from 'lucide-react';
 import { BankLinkButton } from '@/components/settings/BankLinkButton';
+import { SetuAALinkButton } from '@/components/settings/SetuAALinkButton';
 
 const currencies = [
   { code: 'USD', label: 'US Dollar ($)' },
@@ -255,6 +256,7 @@ export default function SettingsPage() {
             </div>
             
             <BankLinkButton />
+            <SetuAALinkButton />
           </div>
         );
 

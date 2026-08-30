@@ -27,6 +27,7 @@ export default function ImportPage() {
   const [creditCol, setCreditCol] = useState('');
   const [balanceCol, setBalanceCol] = useState('');
   const [targetAccountId, setTargetAccountId] = useState(state.accounts[0]?.id || '');
+  const [isBusinessMode, setIsBusinessMode] = useState(false);
 
   // Review state
   const [parsedTxns, setParsedTxns] = useState<Partial<Transaction>[]>([]);
@@ -118,6 +119,7 @@ export default function ImportPage() {
           categoryId: state.categories.find(c => c.type === type)?.id || '',
           accountId: targetAccountId || state.accounts[0]?.id || '',
           notes,
+          isBusiness: isBusinessMode,
         };
       }).filter(t => t.amount > 0); // Ignore 0 amount rows
 
@@ -194,6 +196,15 @@ export default function ImportPage() {
                 {state.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>All transactions in this CSV will be imported into this account.</p>
+              
+              {state.preferences.enableBusinessMode && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                    <input type="checkbox" checked={isBusinessMode} onChange={e => setIsBusinessMode(e.target.checked)} />
+                    Mark all imported transactions as Business
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="form-group">

@@ -119,8 +119,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
       return newState;
     }
-    case 'ADD_TRANSACTIONS_BULK':
-      return { ...state, transactions: [...action.payload, ...state.transactions] };
+    case 'ADD_TRANSACTIONS_BULK': {
+      const newBulkLedger = [...(state.ledger || [])];
+      action.payload.forEach(txn => {
+        if (txn.isBusiness) {
+          newBulkLedger.push(...generateLedgerEntries(txn));
+        }
+      });
+      return { 
+        ...state, 
+        transactions: [...action.payload, ...state.transactions],
+        ledger: newBulkLedger
+      };
+    }
     case 'UPDATE_TRANSACTION': {
       const oldTxn = state.transactions.find(t => t.id === action.payload.id);
       

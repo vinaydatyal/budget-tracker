@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
-
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
-    if (!OPENROUTER_API_KEY) {
-      throw new Error("Missing OPENROUTER_API_KEY environment variable.");
+    const apiKey = process.env.OPENROUTER_API_KEY || '';
+    if (!apiKey) {
+      throw new Error("Missing OPENROUTER_API_KEY in Vercel environment variables. Please add it to your project settings.");
     }
     const { context } = await req.json();
 
@@ -33,7 +32,7 @@ Return ONLY the raw JSON array, without markdown formatting like \`\`\`json.`;
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({

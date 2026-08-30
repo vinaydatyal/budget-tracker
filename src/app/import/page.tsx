@@ -24,6 +24,7 @@ export default function ImportPage() {
   const [amountCol, setAmountCol] = useState('');
   const [debitCol, setDebitCol] = useState('');
   const [creditCol, setCreditCol] = useState('');
+  const [balanceCol, setBalanceCol] = useState('');
 
   // Review state
   const [parsedTxns, setParsedTxns] = useState<Partial<Transaction>[]>([]);
@@ -55,6 +56,9 @@ export default function ImportPage() {
           setAmountFormat('single');
           setAmountCol(results.meta.fields[fields.indexOf(amtMatch)]);
         }
+        
+        const balMatch = fields.find(f => f.includes('balance'));
+        if (balMatch) setBalanceCol(results.meta.fields[fields.indexOf(balMatch)]);
         
         setStep(2);
       },
@@ -97,6 +101,11 @@ export default function ImportPage() {
         let d = new Date(dateStr);
         if (isNaN(d.getTime())) d = new Date();
 
+        let notes = '';
+        if (balanceCol && row[balanceCol]) {
+          notes = `Balance: ${row[balanceCol]}`;
+        }
+
         return {
           id: `imp-${Date.now()}-${i}`,
           date: d.toISOString(),
@@ -105,6 +114,7 @@ export default function ImportPage() {
           type,
           categoryId: state.categories.find(c => c.type === type)?.id || '',
           accountId: state.accounts[0]?.id || '',
+          notes,
         };
       }).filter(t => t.amount > 0); // Ignore 0 amount rows
 
@@ -229,6 +239,14 @@ export default function ImportPage() {
                 </div>
               </div>
             )}
+            
+            <div className="form-group">
+              <label className="form-label">Balance Column (Optional)</label>
+              <select className="form-select" value={balanceCol} onChange={e => setBalanceCol(e.target.value)}>
+                <option value="">None / Skip</option>
+                {headers.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
           </div>
 
           <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>

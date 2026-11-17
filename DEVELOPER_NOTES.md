@@ -15,7 +15,7 @@ Welcome to Solv! This document outlines the technical architecture, data flow, a
 
 All state is centrally managed inside `src/context/AppContext.tsx`.
 - The `AppState` interface defines the entire universe of user data (Accounts, Transactions, Categories, Goals, Debts, Subscriptions, Ledger, Business Settings).
-- **Persistence:** State is persisted to the browser's `localStorage` via a debounced `useEffect` hook. If a user is signed in via Google Auth, the state is simultaneously backed up to Firebase Cloud Firestore via the `useSync` logic.
+- **Persistence:** Completely eliminated Google Drive dependency and 1-hour session token timeouts. State is persisted locally to browser `localStorage` and backed up directly to Firebase Cloud Firestore (`users/{userId}` via `src/lib/firestoreSync.ts`) whenever a user signs in. Firebase Auth refreshes tokens seamlessly in the background forever, ensuring permanent, uninterrupted multi-user cloud storage.
 - **Reducer Pattern:** All mutations to the global state must flow through the `appReducer`.
 
 ## 3. The Core Financial Engine

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, signInWithPopup, signOut as fbSignOut, GoogleAuthProvider } from 'firebase/auth';
+import { User, signInWithPopup, signOut as fbSignOut } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { toast } from 'react-hot-toast';
 
@@ -19,16 +19,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [googleToken, setGoogleToken] = useState<string | null>(null);
   const isFirebaseConfigured = !!auth;
-
-  useEffect(() => {
-    // Try restoring token from session storage
-    if (typeof window !== 'undefined') {
-      const savedToken = sessionStorage.getItem('google_drive_token');
-      if (savedToken) setGoogleToken(savedToken);
-    }
-  }, []);
 
   useEffect(() => {
     if (!auth) {
@@ -46,22 +37,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     if (!auth) {
-      toast.error('Firebase is not configured! Please add your Firebase config to src/lib/firebase.ts to enable Google Sign-In and Cloud Sync.', { duration: 6000 });
+      toast.error('Firebase is not configured! Please check your Firebase config in src/lib/firebase.ts.', { duration: 6000 });
       return;
     }
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken;
-      if (token) {
-        setGoogleToken(token);
-        sessionStorage.setItem('google_drive_token', token);
-        sessionStorage.removeItem('drive_expired');
-        toast.dismiss('drive_expired');
-      }
-    } catch (error) {
+      await signInWithPopup(auth, googleProvider);
+      toast.success('Signed in successfully! Real-time cloud storage active.', { icon: '☁️' });
+    } catch (error: any) {
       console.error('Error signing in with Google', error);
-      alert('Failed to sign in. Check console for details.');
+      toast.error(error.message || 'Failed to sign in.');
     }
   };
 
@@ -69,15 +53,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth) return;
     try {
       await fbSignOut(auth);
-      setGoogleToken(null);
-      sessionStorage.removeItem('google_drive_token');
+      toast.success('Signed out.');
     } catch (error) {
       console.error('Error signing out', error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, isFirebaseConfigured, googleToken }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, isFirebaseConfigured, googleToken: null }}>
       {children}
     </AuthContext.Provider>
   );

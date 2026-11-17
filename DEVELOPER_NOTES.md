@@ -140,6 +140,10 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Sidebar Auth Redesign (`Sidebar.tsx`):** Replaced ambiguous `"Cloud Sync"` button with a prominent `"Sign In"` link when logged out, and a rich user badge (initials avatar, email snippet, live green sync dot, and clean Sign Out action) when logged in.
   - **Guest Mode Awareness (`DashboardPage.tsx`):** Added an alert banner for unauthenticated visitors informing them they are in local Guest Mode with a direct action to Sign In to enable cloud sync.
   - **Zero-Error Heuristic Insights (`AiInsightsWidget.tsx` & `/api/insights`):** Built local algorithmic financial heuristics (cash flow surplus/deficit, bill reminders, debt payoff strategy, savings milestones). If AI environment keys (`ANTHROPIC_API_KEY`, etc.) are omitted or remote LLM calls timeout, the widget and API seamlessly fall back to deterministic financial analysis, eliminating all raw `"fetch failed"` or `"internal error"` displays.
+- **Phase 10 (Multi-Provider Firebase Authentication & Production Setup):**
+  - **Firebase Auth Providers:** Expanded authentication to support both 1-Click Google OAuth and native Firebase Email & Password authentication (`signInWithEmailAndPassword`, `createUserWithEmailAndPassword`).
+  - **Dual Auth Mode UI (`/login`):** Built clean tabbed interface allowing users without a Google account to create a password-protected account directly with their email.
+  - **Firebase Production Checklist:** Documented Firestore security rules (`users/{userId}` user isolation), Authorized Domains configuration for Vercel, and Cloud Firestore provisioning requirements.
 
 ## 9. Where to Find Things
 

@@ -10,20 +10,27 @@ import {
   LogOut, 
   CheckCircle2, 
   ChevronLeft,
-  Lock
+  Lock,
+  Mail,
+  KeyRound,
+  UserPlus,
+  LogIn
 } from 'lucide-react';
 
 function LoginForm() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleGoogleSignIn = async () => {
-    setIsSigningIn(true);
+    setIsSubmitting(true);
     setErrorMessage('');
     try {
       await signInWithGoogle();
@@ -32,7 +39,29 @@ function LoginForm() {
       console.error('Sign-in failed:', err);
       setErrorMessage(err?.message || 'Could not sign in with Google. Please try again.');
     } finally {
-      setIsSigningIn(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setErrorMessage('Please fill in both email and password.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage('');
+    try {
+      if (authMode === 'signin') {
+        await signInWithEmail(email, password);
+      } else {
+        await signUpWithEmail(email, password);
+      }
+      router.push(redirectUrl);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Authentication failed. Please verify your credentials.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -51,7 +80,7 @@ function LoginForm() {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: '32px 20px',
+      padding: '40px 20px',
       background: 'radial-gradient(ellipse at 50% 10%, rgba(129, 140, 248, 0.12), transparent 60%), var(--bg-base)',
       color: 'var(--text-main)',
       position: 'relative'
@@ -86,7 +115,7 @@ function LoginForm() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 24
+        gap: 20
       }}>
         {/* Brand Header */}
         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -125,11 +154,11 @@ function LoginForm() {
           backdropFilter: 'blur(16px)',
           border: '1px solid var(--border)',
           borderRadius: 20,
-          padding: 32,
+          padding: '28px 24px',
           boxShadow: '0 12px 36px rgba(0,0,0,0.25)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 20
+          gap: 18
         }}>
           {user ? (
             /* Logged In State */
@@ -153,13 +182,13 @@ function LoginForm() {
 
               <div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--income)', fontSize: 12, fontWeight: 600, background: 'var(--income-subtle)', padding: '4px 10px', borderRadius: 20, marginBottom: 8 }}>
-                  <CheckCircle2 size={13} /> Active Session
+                  <CheckCircle2 size={13} /> Active Firebase Session
                 </div>
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 4px' }}>
-                  {user.displayName || 'Welcome Back'}
+                  {user.displayName || user.email}
                 </h2>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                  {user.email}
+                  Cloud Storage Active ({user.email})
                 </div>
               </div>
 
@@ -198,20 +227,57 @@ function LoginForm() {
             </div>
           ) : (
             /* Logged Out / Login Form */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ textAlign: 'center' }}>
-                <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 6px' }}>
-                  Sign in to your account
-                </h2>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  Sync your transactions, budgets, and accounts securely across all your devices.
-                </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Tab Selector: Sign In vs Sign Up */}
+              <div style={{
+                display: 'flex',
+                background: 'var(--bg-input)',
+                borderRadius: 10,
+                padding: 3,
+                border: '1px solid var(--border)'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('signin'); setErrorMessage(''); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: authMode === 'signin' ? 'var(--accent)' : 'transparent',
+                    color: authMode === 'signin' ? '#fff' : 'var(--text-muted)'
+                  }}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('signup'); setErrorMessage(''); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: authMode === 'signup' ? 'var(--accent)' : 'transparent',
+                    color: authMode === 'signup' ? '#fff' : 'var(--text-muted)'
+                  }}
+                >
+                  Create Account
+                </button>
               </div>
 
               {errorMessage && (
                 <div style={{
-                  padding: '12px 14px',
-                  borderRadius: 10,
+                  padding: '10px 12px',
+                  borderRadius: 8,
                   background: 'var(--expense-subtle)',
                   border: '1px solid var(--expense)',
                   color: 'var(--expense)',
@@ -222,42 +288,31 @@ function LoginForm() {
                 </div>
               )}
 
-              {/* Google Sign-in Button */}
+              {/* 1. Google 1-Click Sign-in via Firebase */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                disabled={isSigningIn || loading}
+                disabled={isSubmitting || loading}
                 style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 12,
-                  padding: '13px 20px',
+                  padding: '12px 18px',
                   background: '#ffffff',
                   color: '#1f2937',
                   border: '1px solid #e5e7eb',
-                  borderRadius: 12,
-                  fontSize: 15,
+                  borderRadius: 10,
+                  fontSize: 14,
                   fontWeight: 600,
-                  cursor: isSigningIn || loading ? 'not-allowed' : 'pointer',
+                  cursor: isSubmitting || loading ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-                  opacity: isSigningIn || loading ? 0.7 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSigningIn && !loading) {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                  opacity: isSubmitting || loading ? 0.7 : 1
                 }}
               >
-                {/* Official Google G Logo SVG */}
-                <svg width="20" height="20" viewBox="0 0 24 24">
+                <svg width="18" height="18" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.14z"
@@ -275,13 +330,99 @@ function LoginForm() {
                     d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                   />
                 </svg>
-                <span>{isSigningIn ? 'Connecting Google Account...' : 'Continue with Google'}</span>
+                <span>{isSubmitting ? 'Authenticating with Firebase...' : 'Continue with Google'}</span>
               </button>
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '2px 0' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or with email</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              </div>
+
+              {/* 2. Email & Password Form via Firebase */}
+              <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Email Address
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Mail size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                      type="email"
+                      required
+                      placeholder="you@domain.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px 10px 36px',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 10,
+                        color: 'var(--text-main)',
+                        fontSize: 14,
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <KeyRound size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px 10px 36px',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 10,
+                        color: 'var(--text-main)',
+                        fontSize: 14,
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || loading}
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '11px 18px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    marginTop: 4,
+                    boxShadow: '0 4px 12px var(--accent-glow)'
+                  }}
+                >
+                  {isSubmitting ? (
+                    'Processing...'
+                  ) : authMode === 'signin' ? (
+                    <><LogIn size={16} /> Sign In</>
+                  ) : (
+                    <><UserPlus size={16} /> Create Free Account</>
+                  )}
+                </button>
+              </form>
+
               {/* Guest Access Alternative */}
-              <div style={{ textAlign: 'center', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 10px' }}>
-                  Prefer using it offline without an account?
+              <div style={{ textAlign: 'center', borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 6px' }}>
+                  Want to try without creating an account?
                 </p>
                 <Link
                   href={redirectUrl}
@@ -295,7 +436,7 @@ function LoginForm() {
                     gap: 4
                   }}
                 >
-                  Continue as Guest (Local Mode) <ArrowRight size={14} />
+                  Continue as Guest (Offline Mode) <ArrowRight size={14} />
                 </Link>
               </div>
             </div>

@@ -4,7 +4,7 @@ import { AppState, Transaction } from '@/lib/types';
 
 export async function GET() {
   try {
-    const state = readServerState();
+    const state = await readServerState();
     return NextResponse.json({ success: true, state, timestamp: Date.now() });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -22,12 +22,12 @@ export async function POST(req: Request) {
     }
 
     if (!merge) {
-      writeServerState(incomingState);
+      await writeServerState(incomingState);
       return NextResponse.json({ success: true, state: incomingState });
     }
 
     // Merge logic
-    const current = readServerState();
+    const current = await readServerState();
     const existingTxnIds = new Set(current.transactions.map(t => t.id));
     const mergedTxns: Transaction[] = [...current.transactions];
 
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       savingsGoals: incomingState.savingsGoals?.length ? incomingState.savingsGoals : current.savingsGoals,
     };
 
-    writeServerState(mergedState);
+    await writeServerState(mergedState);
     return NextResponse.json({ success: true, state: mergedState });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

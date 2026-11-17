@@ -7,6 +7,9 @@ export function getDataFilePath(): string {
   if (process.env.BUDGET_DATA_PATH) {
     return path.resolve(process.env.BUDGET_DATA_PATH);
   }
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join('/tmp', 'app_state.json');
+  }
   return path.join(process.cwd(), 'data', 'app_state.json');
 }
 
@@ -74,7 +77,46 @@ export function generateLedgerEntries(txn: Transaction, accounts: Account[]): Le
   return entries;
 }
 
-export function readServerState(): AppState {
+function sanitizeState(parsed: any): AppState {
+  return {
+    ...DEFAULT_STATE,
+    ...parsed,
+    transactions: parsed.transactions || [],
+    categories: parsed.categories && parsed.categories.length > 0 ? parsed.categories : DEFAULT_CATEGORIES,
+    accounts: parsed.accounts && parsed.accounts.length > 0 ? parsed.accounts : DEFAULT_ACCOUNTS,
+    ledger: parsed.ledger || [],
+    budgetGoals: parsed.budgetGoals || [],
+    recurringTransactions: parsed.recurringTransactions || [],
+    debts: parsed.debts || [],
+    savingsGoals: parsed.savingsGoals || [],
+    revenueSources: parsed.revenueSources || [],
+    splitRules: parsed.splitRules || [],
+    unlockedAchievements: parsed.unlockedAchievements || []
+  };
+}
+
+export async function readServerState(): Promise<AppState> {
+  const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (kvUrl && kvToken) {
+    try {
+      const res = await fetch(`${kvUrl.replace(/\/$/, '')}/get/budget_app_state`, {
+        headers: { Authorization: `Bearer ${kvToken}` },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.result) {
+          const parsed = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+          return sanitizeState(parsed);
+        }
+      }
+    } catch (err) {
+      console.warn('KV read error, falling back to disk:', err);
+    }
+  }
+
   const filePath = getDataFilePath();
   try {
     if (!fs.existsSync(filePath)) {
@@ -84,37 +126,44 @@ export function readServerState(): AppState {
     if (!raw.trim()) {
       return { ...DEFAULT_STATE };
     }
-    const parsed = JSON.parse(raw) as AppState;
-    return {
-      ...DEFAULT_STATE,
-      ...parsed,
-      transactions: parsed.transactions || [],
-      categories: parsed.categories && parsed.categories.length > 0 ? parsed.categories : DEFAULT_CATEGORIES,
-      accounts: parsed.accounts && parsed.accounts.length > 0 ? parsed.accounts : DEFAULT_ACCOUNTS,
-      ledger: parsed.ledger || [],
-      budgetGoals: parsed.budgetGoals || [],
-      recurringTransactions: parsed.recurringTransactions || [],
-      debts: parsed.debts || [],
-      savingsGoals: parsed.savingsGoals || [],
-      revenueSources: parsed.revenueSources || [],
-      splitRules: parsed.splitRules || [],
-      unlockedAchievements: parsed.unlockedAchievements || []
-    };
+    return sanitizeState(JSON.parse(raw));
   } catch (err) {
     console.error('Error reading server state:', err);
     return { ...DEFAULT_STATE };
   }
 }
 
-export function writeServerState(state: AppState): void {
-  const filePath = getDataFilePath();
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+export async function writeServerState(state: AppState): Promise<void> {
+  const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (kvUrl && kvToken) {
+    try {
+      await fetch(`${kvUrl.replace(/\/$/, '')}/set/budget_app_state`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${kvToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(state)
+      });
+    } catch (err) {
+      console.warn('KV write error, falling back to disk:', err);
+    }
   }
-  const tempPath = `${filePath}.tmp.${Date.now()}`;
-  fs.writeFileSync(tempPath, JSON.stringify(state, null, 2), 'utf8');
-  fs.renameSync(tempPath, filePath);
+
+  try {
+    const filePath = getDataFilePath();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const tempPath = `${filePath}.tmp.${Date.now()}`;
+    fs.writeFileSync(tempPath, JSON.stringify(state, null, 2), 'utf8');
+    fs.renameSync(tempPath, filePath);
+  } catch (err) {
+    console.error('Error writing server state to file:', err);
+  }
 }
 
 export function resolveAccount(accounts: Account[], accountQuery?: string): Account {

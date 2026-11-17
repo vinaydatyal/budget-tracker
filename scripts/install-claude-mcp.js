@@ -46,7 +46,10 @@ function installClaudeMcp() {
   // Register budget-tracker
   currentConfig.mcpServers['budget-tracker'] = {
     command: 'node',
-    args: [serverScript]
+    args: [serverScript],
+    env: {
+      BUDGET_APP_URL: 'https://budget-tracker-enterprise.vercel.app'
+    }
   };
 
   fs.writeFileSync(configFile, JSON.stringify(currentConfig, null, 2), 'utf8');

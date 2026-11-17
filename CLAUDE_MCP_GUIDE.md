@@ -1,12 +1,12 @@
-# Claude MCP Server for Solv (Budget Tracker)
+This # Claude MCP Server for Solv (Budget Tracker)
 
 Control your entire financial life directly through Claude! With the **Solv Model Context Protocol (MCP)** server, Claude Desktop and Claude Apps can view, add, update, and manage everything in your budget tracker on your behalf.
 
 ---
 
-## 🚀 Quick Setup (Already Configured!)
+## 🚀 Quick Setup (Configured for Live Production Web App!)
 
-Your Claude Desktop has already been automatically configured with the MCP server at:
+Your Claude Desktop has already been automatically configured with the MCP server connected directly to your live production web app:
 `C:\Users\Digital Leap\AppData\Roaming\Claude\claude_desktop_config.json`
 
 ```json
@@ -16,7 +16,10 @@ Your Claude Desktop has already been automatically configured with the MCP serve
       "command": "node",
       "args": [
         "C:\\Users\\Digital Leap\\.gemini\\antigravity-ide\\scratch\\budget-tracker\\mcp-server\\index.mjs"
-      ]
+      ],
+      "env": {
+        "BUDGET_APP_URL": "https://budget-tracker-enterprise.vercel.app"
+      }
     }
   }
 }
@@ -29,10 +32,10 @@ Your Claude Desktop has already been automatically configured with the MCP serve
 
 ---
 
-## ⚡ Real-Time Auto-Sync with the Web App
+## ⚡ Live Cloud Synchronization with https://budget-tracker-enterprise.vercel.app
 
-- **Claude -> Web App**: When Claude creates or updates transactions, accounts, or budgets, the changes are saved directly to `data/app_state.json`. When you switch back to your browser window or refresh the app, the UI automatically syncs and displays the new transactions!
-- **Web App -> Claude**: Any transactions or accounts you create directly in the web app are automatically synced to the server data store so Claude always has real-time context.
+- **Claude ➔ Live Web App**: When Claude creates or updates transactions, accounts, or budgets, the changes are posted directly to your live Vercel app's `/api/sync` endpoint and cached locally in `data/app_state.json`. When you switch back to your browser tab on `https://budget-tracker-enterprise.vercel.app/dashboard`, the UI automatically detects the new transactions on window focus and syncs them!
+- **Live Web App ➔ Claude**: Any transactions or accounts you create directly on the web app are automatically synced so Claude always has real-time context.
 
 ---
 

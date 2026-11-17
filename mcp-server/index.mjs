@@ -74,44 +74,118 @@ const DEFAULT_STATE = {
   }
 };
 
-function readState() {
+const APP_URL = (process.env.BUDGET_APP_URL || 'https://budget-tracker-enterprise.vercel.app').replace(/\/$/, '');
+
+function sanitizeState(parsed) {
+  return {
+    ...DEFAULT_STATE,
+    ...parsed,
+    transactions: parsed.transactions || [],
+    accounts: parsed.accounts?.length ? parsed.accounts : DEFAULT_ACCOUNTS,
+    categories: parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES,
+    budgetGoals: parsed.budgetGoals || [],
+    recurringTransactions: parsed.recurringTransactions || [],
+    debts: parsed.debts || [],
+    savingsGoals: parsed.savingsGoals || [],
+    ledger: parsed.ledger || []
+  };
+}
+
+function readLocalState() {
   try {
     if (!fs.existsSync(DATA_FILE)) {
-      writeState(DEFAULT_STATE);
+      writeLocalState(DEFAULT_STATE);
       return { ...DEFAULT_STATE };
     }
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
     if (!raw.trim()) {
-      writeState(DEFAULT_STATE);
+      writeLocalState(DEFAULT_STATE);
       return { ...DEFAULT_STATE };
     }
-    const parsed = JSON.parse(raw);
-    return {
-      ...DEFAULT_STATE,
-      ...parsed,
-      transactions: parsed.transactions || [],
-      accounts: parsed.accounts?.length ? parsed.accounts : DEFAULT_ACCOUNTS,
-      categories: parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES,
-      budgetGoals: parsed.budgetGoals || [],
-      recurringTransactions: parsed.recurringTransactions || [],
-      debts: parsed.debts || [],
-      savingsGoals: parsed.savingsGoals || [],
-      ledger: parsed.ledger || []
-    };
+    return sanitizeState(JSON.parse(raw));
   } catch (err) {
-    console.error('Failed to read state:', err);
     return { ...DEFAULT_STATE };
   }
 }
 
-function writeState(state) {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+function writeLocalState(state) {
+  try {
+    const dir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const temp = `${DATA_FILE}.tmp.${Date.now()}`;
+    fs.writeFileSync(temp, JSON.stringify(state, null, 2), 'utf8');
+    fs.renameSync(temp, DATA_FILE);
+  } catch (err) {
+    console.error('Failed to write local state:', err);
   }
-  const temp = `${DATA_FILE}.tmp.${Date.now()}`;
-  fs.writeFileSync(temp, JSON.stringify(state, null, 2), 'utf8');
-  fs.renameSync(temp, DATA_FILE);
+}
+
+async function readState() {
+  const localState = readLocalState();
+  if (APP_URL) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`${APP_URL}/api/sync`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.state) {
+          const serverState = data.state;
+          const localTxnIds = new Set((localState.transactions || []).map(t => t.id));
+          const serverTxns = serverState.transactions || [];
+          const mergedTxns = [...(localState.transactions || [])];
+
+          serverTxns.forEach(t => {
+            if (!localTxnIds.has(t.id)) {
+              mergedTxns.push(t);
+              localTxnIds.add(t.id);
+            }
+          });
+
+          const mergedState = {
+            ...DEFAULT_STATE,
+            ...serverState,
+            ...localState,
+            transactions: mergedTxns,
+            accounts: serverState.accounts?.length ? serverState.accounts : localState.accounts,
+            categories: serverState.categories?.length ? serverState.categories : localState.categories,
+            budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : localState.budgetGoals,
+            recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : localState.recurringTransactions,
+            debts: serverState.debts?.length ? serverState.debts : localState.debts,
+            savingsGoals: serverState.savingsGoals?.length ? serverState.savingsGoals : localState.savingsGoals,
+          };
+
+          writeLocalState(mergedState);
+          return sanitizeState(mergedState);
+        }
+      }
+    } catch (err) {
+      // Fall back to local file
+    }
+  }
+  return localState;
+}
+
+async function writeState(state) {
+  writeLocalState(state);
+  if (APP_URL) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      await fetch(`${APP_URL}/api/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({ state, merge: true })
+      });
+      clearTimeout(timeoutId);
+    } catch (err) {
+      // Offline fallback
+    }
+  }
 }
 
 function uid(prefix = 'id') {
@@ -261,7 +335,7 @@ server.tool(
     isBusiness: z.boolean().optional().describe('Whether this is a business/freelance transaction')
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const account = resolveAccount(state.accounts, args.account);
     const toAccount = args.toAccount ? resolveAccount(state.accounts, args.toAccount) : undefined;
     const category = resolveCategory(state.categories, args.category, args.type);
@@ -297,7 +371,7 @@ server.tool(
       state.ledger = [...(state.ledger || []), ...newEntries];
     }
 
-    writeState(state);
+    await writeState(state);
 
     const balances = calculateAccountBalances(state);
     const updatedAcc = balances.find(a => a.id === account.id);
@@ -346,7 +420,7 @@ server.tool(
       return { content: [{ type: 'text', text: 'No transactions provided.' }] };
     }
 
-    const state = readState();
+    const state = await readState();
     let totalIncome = 0;
     let totalExpense = 0;
     const addedList = [];
@@ -389,7 +463,7 @@ server.tool(
       addedList.push(`${dateStr.slice(0, 10)} | ${item.type.toUpperCase()} | ${formatMoney(item.amount, state.currency)} | ${item.description} (${category.name})`);
     }
 
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -424,7 +498,7 @@ server.tool(
     isBusiness: z.boolean().optional().describe('Filter by personal vs business')
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     let txns = [...state.transactions];
 
     if (args.type && args.type !== 'all') {
@@ -503,7 +577,7 @@ server.tool(
     isBusiness: z.boolean().optional()
   },
   async ({ id, ...updates }) => {
-    const state = readState();
+    const state = await readState();
     const idx = state.transactions.findIndex(t => t.id === id);
     if (idx === -1) {
       return { content: [{ type: 'text', text: `❌ Transaction with ID "${id}" was not found.` }] };
@@ -531,7 +605,7 @@ server.tool(
     }
 
     state.transactions[idx] = current;
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -558,7 +632,7 @@ server.tool(
     id: z.string().describe('The transaction ID to delete')
   },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     const txn = state.transactions.find(t => t.id === id);
     if (!txn) {
       return { content: [{ type: 'text', text: `❌ Transaction with ID "${id}" not found.` }] };
@@ -589,7 +663,7 @@ server.tool(
     state.transactions = state.transactions.filter(t => t.id !== id);
     state.ledger = (state.ledger || []).filter(l => l.transactionId !== id);
 
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -610,7 +684,7 @@ server.tool(
   'List all financial accounts and assets with their current calculated balances.',
   {},
   async () => {
-    const state = readState();
+    const state = await readState();
     const balances = calculateAccountBalances(state);
 
     let totalLiquid = 0;
@@ -647,7 +721,7 @@ server.tool(
     initialBalance: z.number().optional().describe('Optional starting balance for this account')
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const newAcc = {
       id: uid('acc'),
       name: args.name,
@@ -673,7 +747,7 @@ server.tool(
       });
     }
 
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -695,7 +769,7 @@ server.tool(
   'List all expense and income categories, including icons and monthly budget limits.',
   {},
   async () => {
-    const state = readState();
+    const state = await readState();
     const incomeCats = state.categories.filter(c => c.type === 'income' || c.type === 'both');
     const expenseCats = state.categories.filter(c => c.type === 'expense' || c.type === 'both');
 
@@ -728,7 +802,7 @@ server.tool(
     isBusiness: z.boolean().optional().default(false)
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const newCat = {
       id: uid('cat'),
       name: args.name,
@@ -740,7 +814,7 @@ server.tool(
     };
 
     state.categories.push(newCat);
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -764,7 +838,7 @@ server.tool(
     month: z.string().optional().describe('Target month in YYYY-MM format (defaults to current month)')
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const targetMonth = args.month || new Date().toISOString().slice(0, 7);
 
     // Calculate spend per category for this month
@@ -816,7 +890,7 @@ server.tool(
     month: z.string().optional().describe('Target month YYYY-MM (defaults to current month)')
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const cat = resolveCategory(state.categories, args.category, 'expense');
     const month = args.month || new Date().toISOString().slice(0, 7);
 
@@ -837,7 +911,7 @@ server.tool(
       });
     }
 
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -858,7 +932,7 @@ server.tool(
   'List all recurring bills, subscriptions, EMIs, and SIP investments.',
   {},
   async () => {
-    const state = readState();
+    const state = await readState();
     const items = state.recurringTransactions || [];
 
     if (!items.length) {
@@ -902,7 +976,7 @@ server.tool(
     isBusiness: z.boolean().optional().default(false)
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const account = resolveAccount(state.accounts, args.account);
     const category = resolveCategory(state.categories, args.category, args.type);
 
@@ -923,7 +997,7 @@ server.tool(
     };
 
     state.recurringTransactions.push(recurring);
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -949,7 +1023,7 @@ server.tool(
     id: z.string().describe('ID of the recurring transaction to mark as paid')
   },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     const r = state.recurringTransactions.find(item => item.id === id);
     if (!r) {
       return { content: [{ type: 'text', text: `❌ Recurring transaction with ID "${id}" not found.` }] };
@@ -985,7 +1059,7 @@ server.tool(
       }
     }
 
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -1009,7 +1083,7 @@ server.tool(
   'List all loans, mortgages, and credit card debts.',
   {},
   async () => {
-    const state = readState();
+    const state = await readState();
     const debts = state.debts || [];
     if (!debts.length) {
       return { content: [{ type: 'text', text: '🎉 No outstanding debts recorded!' }] };
@@ -1043,7 +1117,7 @@ server.tool(
     notes: z.string().optional()
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const debt = state.debts.find(d => d.id === args.debtId);
     if (!debt) {
       return { content: [{ type: 'text', text: `❌ Debt with ID "${args.debtId}" not found.` }] };
@@ -1067,7 +1141,7 @@ server.tool(
     };
     state.transactions.unshift(txn);
 
-    writeState(state);
+    await writeState(state);
 
     return {
       content: [
@@ -1090,7 +1164,7 @@ server.tool(
   'List all savings and investment goals with current progress and targets.',
   {},
   async () => {
-    const state = readState();
+    const state = await readState();
     const goals = state.savingsGoals || [];
     if (!goals.length) {
       return { content: [{ type: 'text', text: 'No savings goals found.' }] };
@@ -1122,7 +1196,7 @@ server.tool(
     account: z.string().optional().describe('Account used for funding')
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const goal = state.savingsGoals.find(g => g.id === args.goalId);
     if (!goal) {
       return { content: [{ type: 'text', text: `❌ Savings goal with ID "${args.goalId}" not found.` }] };
@@ -1145,7 +1219,7 @@ server.tool(
     };
     state.transactions.unshift(txn);
 
-    writeState(state);
+    await writeState(state);
 
     const pct = goal.targetAmount > 0 ? Math.round((goal.currentAmount / goal.targetAmount) * 100) : 0;
 
@@ -1170,7 +1244,7 @@ server.tool(
   'Get a complete snapshot of total net worth, liquid cash, monthly income/expenses, debts, and upcoming bills.',
   {},
   async () => {
-    const state = readState();
+    const state = await readState();
     const balances = calculateAccountBalances(state);
 
     let liquidCash = 0;
@@ -1245,7 +1319,7 @@ server.tool(
     isBusiness: z.boolean().optional()
   },
   async ({ id, ...updates }) => {
-    const state = readState();
+    const state = await readState();
     const acc = state.accounts.find(a => a.id === id);
     if (!acc) return { content: [{ type: 'text', text: `❌ Account "${id}" not found.` }] };
     if (updates.name !== undefined) acc.name = updates.name;
@@ -1253,7 +1327,7 @@ server.tool(
     if (updates.incomeSource !== undefined) acc.incomeSource = updates.incomeSource;
     if (updates.color !== undefined) acc.color = updates.color;
     if (updates.isBusiness !== undefined) acc.isBusiness = updates.isBusiness;
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `✅ Updated account "${acc.name}".` }] };
   }
 );
@@ -1263,11 +1337,11 @@ server.tool(
   'Delete an account by ID.',
   { id: z.string() },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     const acc = state.accounts.find(a => a.id === id);
     if (!acc) return { content: [{ type: 'text', text: `❌ Account "${id}" not found.` }] };
     state.accounts = state.accounts.filter(a => a.id !== id);
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `🗑️ Deleted account "${acc.name}".` }] };
   }
 );
@@ -1286,14 +1360,14 @@ server.tool(
     color: z.string().optional()
   },
   async ({ id, ...updates }) => {
-    const state = readState();
+    const state = await readState();
     const cat = state.categories.find(c => c.id === id);
     if (!cat) return { content: [{ type: 'text', text: `❌ Category "${id}" not found.` }] };
     if (updates.name !== undefined) cat.name = updates.name;
     if (updates.icon !== undefined) cat.icon = updates.icon;
     if (updates.monthlyBudget !== undefined) cat.monthlyBudget = updates.monthlyBudget;
     if (updates.color !== undefined) cat.color = updates.color;
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `✅ Updated category "${cat.name}".` }] };
   }
 );
@@ -1303,11 +1377,11 @@ server.tool(
   'Delete a category by ID.',
   { id: z.string() },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     const cat = state.categories.find(c => c.id === id);
     if (!cat) return { content: [{ type: 'text', text: `❌ Category "${id}" not found.` }] };
     state.categories = state.categories.filter(c => c.id !== id);
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `🗑️ Deleted category "${cat.name}".` }] };
   }
 );
@@ -1320,9 +1394,9 @@ server.tool(
   'Delete a specific budget goal by ID.',
   { id: z.string() },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     state.budgetGoals = (state.budgetGoals || []).filter(g => g.id !== id);
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `🗑️ Deleted budget goal "${id}".` }] };
   }
 );
@@ -1332,10 +1406,10 @@ server.tool(
   'Delete a recurring bill or subscription by ID.',
   { id: z.string() },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     const r = state.recurringTransactions.find(item => item.id === id);
     state.recurringTransactions = state.recurringTransactions.filter(item => item.id !== id);
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `🗑️ Deleted recurring item "${r?.description || id}".` }] };
   }
 );
@@ -1356,7 +1430,7 @@ server.tool(
     isBusiness: z.boolean().optional().default(false)
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const debt = {
       id: uid('debt'),
       name: args.name,
@@ -1368,7 +1442,7 @@ server.tool(
       isBusiness: args.isBusiness
     };
     state.debts = [...(state.debts || []), debt];
-    writeState(state);
+    await writeState(state);
     return {
       content: [
         {
@@ -1385,10 +1459,10 @@ server.tool(
   'Delete a debt entry by ID.',
   { id: z.string() },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     const d = (state.debts || []).find(item => item.id === id);
     state.debts = (state.debts || []).filter(item => item.id !== id);
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `🗑️ Deleted debt "${d?.name || id}".` }] };
   }
 );
@@ -1408,7 +1482,7 @@ server.tool(
     isBusiness: z.boolean().optional().default(false)
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const goal = {
       id: uid('goal'),
       name: args.name,
@@ -1419,7 +1493,7 @@ server.tool(
       isBusiness: args.isBusiness
     };
     state.savingsGoals = [...(state.savingsGoals || []), goal];
-    writeState(state);
+    await writeState(state);
     return {
       content: [
         {
@@ -1436,10 +1510,10 @@ server.tool(
   'Delete a savings goal by ID.',
   { id: z.string() },
   async ({ id }) => {
-    const state = readState();
+    const state = await readState();
     const g = (state.savingsGoals || []).find(item => item.id === id);
     state.savingsGoals = (state.savingsGoals || []).filter(item => item.id !== id);
-    writeState(state);
+    await writeState(state);
     return { content: [{ type: 'text', text: `🗑️ Deleted savings goal "${g?.name || id}".` }] };
   }
 );
@@ -1454,7 +1528,7 @@ server.tool(
     month: z.string().optional().describe('Target month YYYY-MM (defaults to current month)')
   },
   async (args) => {
-    const state = readState();
+    const state = await readState();
     const targetMonth = args.month || new Date().toISOString().slice(0, 7);
 
     let totalExpense = 0;

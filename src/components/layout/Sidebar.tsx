@@ -258,24 +258,58 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: { is
         </button>
         {isFirebaseConfigured && (
           user ? (
-            <button
-              className="btn btn-secondary"
-              style={{ width: '100%', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--expense)' }}
-              onClick={signOut}
-              title={`Logged in as ${user.email}`}
-            >
-              <LogOut size={18} />
-              <span className="nav-label" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Sign Out</span>
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', marginTop: 4 }}>
+              {!isCollapsed && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  background: 'var(--accent-subtle)',
+                  marginBottom: 2
+                }}>
+                  <div style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U')}
+                  </div>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: 'var(--text-main)', flex: 1 }}>
+                    {user.displayName || user.email}
+                  </div>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--income)', flexShrink: 0 }} title="Cloud Storage Active" />
+                </div>
+              )}
+              <button
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--expense)' }}
+                onClick={signOut}
+                title={`Logged in as ${user.email} - Click to Sign Out`}
+              >
+                <LogOut size={18} />
+                <span className="nav-label" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Sign Out</span>
+              </button>
+            </div>
           ) : (
-            <button
+            <Link
+              href="/login"
               className="btn btn-secondary"
-              style={{ width: '100%', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--income)' }}
-              onClick={signInWithGoogle}
+              style={{ width: '100%', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--income)', fontWeight: 600 }}
+              title="Sign in with your account"
             >
               <LogIn size={18} />
-              <span className="nav-label">Cloud Sync</span>
-            </button>
+              <span className="nav-label">Sign In</span>
+            </Link>
           )
         )}
       </div>

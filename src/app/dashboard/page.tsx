@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { format, subDays, subMonths, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { SummaryCards } from '@/components/dashboard/SummaryCards';
 import { SpendingDonut } from '@/components/dashboard/SpendingDonut';
@@ -19,7 +21,7 @@ import { TransactionsWidget } from '@/components/dashboard/TransactionsWidget';
 import { AchievementsShowcase } from '@/components/dashboard/AchievementsShowcase';
 import { AiInsightsWidget } from '@/components/dashboard/AiInsightsWidget';
 import { AiAdvisorChat } from '@/components/dashboard/AiAdvisorChat';
-import { Settings2, X, Plus, Filter, MessageSquareText } from 'lucide-react';
+import { Settings2, X, Plus, Filter, MessageSquareText, LogIn, Cloud } from 'lucide-react';
 // @ts-ignore
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
 import type { Layout } from 'react-grid-layout';
@@ -117,6 +119,7 @@ const WIDGET_NAMES: Record<string, string> = {
 
 export default function DashboardPage() {
   const { state, dispatch, personalTransactions, personalAccounts, personalCategories } = useApp();
+  const { user, loading: authLoading } = useAuth();
   
   // Global Filters State
   const [dateRangePreset, setDateRangePreset] = useState<GlobalDatePreset>('1M');
@@ -207,10 +210,17 @@ export default function DashboardPage() {
   return (
     <PageWrapper className="page-body">
       {/* Page Header */}
-      <div className="page-header" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+      <div className="page-header" style={{ marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Welcome back — here's your financial overview</p>
+          <p className="page-subtitle" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <span>Welcome back — here&apos;s your financial overview</span>
+            {user && (
+              <span style={{ fontSize: 12, color: 'var(--income)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--income-subtle)', padding: '2px 8px', borderRadius: 12 }}>
+                <Cloud size={12} /> Cloud Synced
+              </span>
+            )}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button 
@@ -235,6 +245,36 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Guest Mode Notification Banner */}
+      {!user && !authLoading && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 18px',
+          marginBottom: 20,
+          borderRadius: 12,
+          background: 'linear-gradient(90deg, rgba(129, 140, 248, 0.08), rgba(192, 132, 252, 0.08))',
+          border: '1px solid rgba(129, 140, 248, 0.25)',
+          flexWrap: 'wrap',
+          gap: 12
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--warning)', boxShadow: '0 0 8px var(--warning)' }} />
+            <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>
+              You are browsing in <strong>Guest Mode</strong> (saved in local browser cache).
+            </span>
+          </div>
+          <Link
+            href="/login"
+            className="btn btn-primary"
+            style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <LogIn size={14} /> Sign In to Sync Cloud
+          </Link>
+        </div>
+      )}
 
       {/* Global Filter Bar */}
       <div style={{

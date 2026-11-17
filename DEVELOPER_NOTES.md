@@ -134,6 +134,12 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
 - **Phase 6 (Rebrand & UI Polish):** Rebranded to "Solv" with the "SV" heart logo. Overhauled the Shared Expenses UI to include visual progress bars and avatars.
 - **Phase 7 (Partial Settlements):** Implemented logic to allow partial repayments on IOUs (`settledAmount` tracking) and added an intelligent offset auto-categorization system to generate exact inverse income transactions to keep net-worth reports flawless.
 - **Phase 8 (Claude Model Context Protocol MCP & Sync Engine):** Created standalone, high-performance MCP server for Claude Desktop with 30 tools to perform every action in the application (single & bulk transaction management, accounts, categories, budgets, recurring bills, debt payments, savings goals, and real-time financial snapshots). Built bidirectional sync engine between Claude Desktop and the web app with focus-triggered auto-updates.
+- **Phase 9 (Dedicated Authentication Route & Resilient Financial Insights):**
+  - **Login Route (`/login`):** Created dedicated, responsive login page featuring Google OAuth integration, active session inspection, account switching, guest bypass, and security guarantees. Wrapped in `<Suspense>` for optimal static prerendering.
+  - **Auth Shell Integration (`AppShell.tsx` & `LandingNavbar.tsx`):** Excluded `/login` from the sidebar dashboard layout for an unencumbered auth experience; added direct "Sign In" CTA on the landing page navbar.
+  - **Sidebar Auth Redesign (`Sidebar.tsx`):** Replaced ambiguous `"Cloud Sync"` button with a prominent `"Sign In"` link when logged out, and a rich user badge (initials avatar, email snippet, live green sync dot, and clean Sign Out action) when logged in.
+  - **Guest Mode Awareness (`DashboardPage.tsx`):** Added an alert banner for unauthenticated visitors informing them they are in local Guest Mode with a direct action to Sign In to enable cloud sync.
+  - **Zero-Error Heuristic Insights (`AiInsightsWidget.tsx` & `/api/insights`):** Built local algorithmic financial heuristics (cash flow surplus/deficit, bill reminders, debt payoff strategy, savings milestones). If AI environment keys (`ANTHROPIC_API_KEY`, etc.) are omitted or remote LLM calls timeout, the widget and API seamlessly fall back to deterministic financial analysis, eliminating all raw `"fetch failed"` or `"internal error"` displays.
 
 ## 9. Where to Find Things
 

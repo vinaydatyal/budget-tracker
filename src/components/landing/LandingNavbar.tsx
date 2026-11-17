@@ -38,7 +38,7 @@ export function LandingNavbar() {
         <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>SolV</span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
         <a 
           href="/solv-app.apk" 
           download="solv-app.apk"
@@ -54,6 +54,20 @@ export function LandingNavbar() {
         >
           Download App
         </a>
+        <Link 
+          href="/login" 
+          style={{
+            color: 'var(--text-primary)',
+            fontWeight: 600,
+            textDecoration: 'none',
+            transition: 'color 0.2s',
+            fontSize: '15px'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+        >
+          Sign In
+        </Link>
         <Link 
           href="/dashboard" 
           style={{

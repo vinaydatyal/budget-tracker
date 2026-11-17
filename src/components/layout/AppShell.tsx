@@ -51,8 +51,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [router]);
 
-  // If on the landing page, don't render the dashboard shell
-  if (pathname === '/') {
+  // If on the landing page or login page, don't render the dashboard shell
+  if (pathname === '/' || pathname === '/login') {
     return (
       <>
         <AnimatePresence mode="wait">

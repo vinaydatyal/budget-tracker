@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Sparkles, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Info } from 'lucide-react';
-import { isBefore, addDays, isAfter } from 'date-fns';
 
 interface Insight {
   id: string;
@@ -11,86 +12,174 @@ interface Insight {
   text: string;
 }
 
+function generateLocalInsights(context: any): Insight[] {
+  const insights: Insight[] = [];
+  const curr = context?.currency || '₹';
+  const spent = Number(context?.recent30DaysActivity?.totalSpent || 0);
+  const income = Number(context?.recent30DaysActivity?.totalIncome || 0);
+
+  if (income > 0 || spent > 0) {
+    if (income >= spent) {
+      insights.push({
+        id: 'cf-positive',
+        type: 'positive',
+        iconType: 'trend_up',
+        title: 'Net Surplus',
+        text: `Your income (${curr}${income.toLocaleString()}) outpaced expenses (${curr}${spent.toLocaleString()}) over the last 30 days by ${curr}${(income - spent).toLocaleString()}.`
+      });
+    } else {
+      insights.push({
+        id: 'cf-deficit',
+        type: 'warning',
+        iconType: 'trend_down',
+        title: 'Spending Alert',
+        text: `Your 30-day expenses (${curr}${spent.toLocaleString()}) exceeded your recorded income (${curr}${income.toLocaleString()}). Monitor discretionary expenses to maintain savings.`
+      });
+    }
+  }
+
+  if (context?.upcomingRecurring && context.upcomingRecurring.length > 0) {
+    const nextBill = context.upcomingRecurring[0];
+    insights.push({
+      id: 'recurring-reminder',
+      type: 'info',
+      iconType: 'sparkle',
+      title: 'Upcoming Subscription',
+      text: `${nextBill.name} (${curr}${Number(nextBill.amount || 0).toLocaleString()}) is scheduled for ${nextBill.nextDate || 'soon'}. Ensure your account has sufficient balance.`
+    });
+  }
+
+  if (context?.activeDebts && context.activeDebts.length > 0) {
+    const highestDebt = [...context.activeDebts].sort((a, b) => Number(b.interestRate || 0) - Number(a.interestRate || 0))[0];
+    insights.push({
+      id: 'debt-strategy',
+      type: 'warning',
+      iconType: 'alert',
+      title: 'Debt Payoff Focus',
+      text: `Prioritize paying down ${highestDebt.name} (Balance: ${curr}${Number(highestDebt.balance || 0).toLocaleString()}) to minimize cumulative interest charges.`
+    });
+  }
+
+  if (context?.savingsGoals && context.savingsGoals.length > 0) {
+    const goal = context.savingsGoals[0];
+    const progress = Number(goal.progress || 0);
+    const target = Number(goal.target || 0);
+    const pct = target > 0 ? Math.round((progress / target) * 100) : 0;
+    insights.push({
+      id: 'savings-milestone',
+      type: 'positive',
+      iconType: 'check',
+      title: 'Savings Progress',
+      text: `You have reached ${pct}% of your "${goal.name}" target (${curr}${progress.toLocaleString()} of ${curr}${target.toLocaleString()}). Keep it up!`
+    });
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      id: 'welcome-solv',
+      type: 'info',
+      iconType: 'sparkle',
+      title: 'Welcome to Solv',
+      text: 'Log your transactions using Quick Add (A) to unlock automated personalized financial recommendations.'
+    });
+    insights.push({
+      id: 'cloud-storage-ready',
+      type: 'positive',
+      iconType: 'check',
+      title: 'Cloud Sync Ready',
+      text: 'Sign in to automatically sync your ledger in real-time across all your desktop and mobile devices.'
+    });
+  }
+
+  return insights;
+}
+
 export function AiInsightsWidget() {
   const { state } = useApp();
-  const [isDismissed, setIsDismissed] = useState(false);
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if we already have cached insights for this session
-    const cached = sessionStorage.getItem('ai_insights');
-    if (cached) {
-      try {
-        setInsights(JSON.parse(cached));
-        return;
-      } catch (e) {
-        // ignore
-      }
-    }
-
     const fetchInsights = async () => {
-      // Don't bother AI if there is barely any data
-      if (state.transactions.length < 5 && state.recurringTransactions.length === 0 && state.debts.length === 0) {
-        return;
+      // Check session storage first to avoid unnecessary fetches
+      const cached = sessionStorage.getItem('ai_insights');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setInsights(parsed);
+            setIsLoading(false);
+            return;
+          }
+        } catch (e) {
+          // ignore cache parse error
+        }
       }
 
       setIsLoading(true);
-      setError('');
+
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
+      let recentSpend = 0;
+      let recentIncome = 0;
+
+      const upcomingRecurring = (state.recurringTransactions || []).filter(r => {
+        if (!r.nextDueDate) return false;
+        const d = new Date(r.nextDueDate);
+        const diff = (d.getTime() - today.getTime()) / (1000 * 3600 * 24);
+        return diff >= 0 && diff <= 30;
+      });
+
+      const activeDebts = (state.debts || []).filter(d => (d.balance || 0) > 0);
+      const activeSavings = (state.savingsGoals || []).filter(s => (s.currentAmount || 0) < (s.targetAmount || 0));
+
+      (state.transactions || []).forEach(t => {
+        const d = new Date(t.date);
+        if (d >= thirtyDaysAgo && d <= today) {
+          if (t.type === 'expense') recentSpend += Number(t.amount || 0);
+          if (t.type === 'income') recentIncome += Number(t.amount || 0);
+        }
+      });
+
+      const context = {
+        currentDate: today.toISOString().split('T')[0],
+        currency: state.currency || 'USD',
+        recent30DaysActivity: {
+          totalSpent: recentSpend,
+          totalIncome: recentIncome
+        },
+        upcomingRecurring: upcomingRecurring.map(r => ({ name: r.description, amount: r.amount, type: r.type, nextDate: r.nextDueDate })),
+        activeDebts: activeDebts.map(d => ({ name: d.name, balance: d.balance, interestRate: d.interestRate, minimumPayment: d.minimumPayment })),
+        savingsGoals: activeSavings.map(s => ({ name: s.name, progress: s.currentAmount, target: s.targetAmount }))
+      };
 
       try {
-        // Summarize context to avoid huge payloads
-        const now = new Date();
-        // Zero out time for exact day calculation
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const thirtyDaysFromNow = addDays(today, 30);
-        const thirtyDaysAgo = addDays(today, -30);
-
-        const upcomingRecurring = state.recurringTransactions.filter(r => r.active && isBefore(new Date(r.nextDueDate), thirtyDaysFromNow));
-        const activeDebts = state.debts.filter(d => d.balance > 0);
-        const activeSavings = state.savingsGoals.filter(s => s.currentAmount < s.targetAmount);
-
-        // Basic spending summary for last 30 days
-        let recentSpend = 0;
-        let recentIncome = 0;
-        state.transactions.forEach(t => {
-          const d = new Date(t.date);
-          if (isAfter(d, thirtyDaysAgo) && isBefore(d, now)) {
-            if (t.type === 'expense') recentSpend += t.amount;
-            if (t.type === 'income') recentIncome += t.amount;
-          }
-        });
-
-        const context = {
-          currentDate: today.toISOString().split('T')[0],
-          currency: state.currency || 'USD',
-          recent30DaysActivity: {
-            totalSpent: recentSpend,
-            totalIncome: recentIncome
-          },
-          upcomingRecurring: upcomingRecurring.map(r => ({ name: r.description, amount: r.amount, type: r.type, nextDate: r.nextDueDate })),
-          activeDebts: activeDebts.map(d => ({ name: d.name, balance: d.balance, interestRate: d.interestRate, minimumPayment: d.minimumPayment })),
-          savingsGoals: activeSavings.map(s => ({ name: s.name, progress: s.currentAmount, target: s.targetAmount }))
-        };
-
         const response = await fetch('/api/insights', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ context })
         });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || 'Failed to generate insights');
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setInsights(data);
+            sessionStorage.setItem('ai_insights', JSON.stringify(data));
+            return;
+          }
         }
-
-        const data: Insight[] = await response.json();
-        setInsights(data);
-        sessionStorage.setItem('ai_insights', JSON.stringify(data));
+        
+        // Fallback to local heuristic generator
+        const localInsights = generateLocalInsights(context);
+        setInsights(localInsights);
+        sessionStorage.setItem('ai_insights', JSON.stringify(localInsights));
       } catch (err: any) {
-        console.error(err);
-        setError(err.message || 'Could not generate insights right now.');
+        console.warn('AiInsights fetch fallback to heuristics:', err);
+        const localInsights = generateLocalInsights(context);
+        setInsights(localInsights);
       } finally {
         setIsLoading(false);
       }
@@ -99,7 +188,7 @@ export function AiInsightsWidget() {
     fetchInsights();
   }, [state.transactions.length, state.recurringTransactions, state.debts, state.savingsGoals, state.revenueSources, state.currency]);
 
-  if (isDismissed || (!isLoading && insights.length === 0 && !error)) return null;
+  if (isDismissed || (!isLoading && insights.length === 0)) return null;
 
   const renderIcon = (type: Insight['iconType'], color: string) => {
     switch (type) {
@@ -145,8 +234,6 @@ export function AiInsightsWidget() {
               }
             `}</style>
           </div>
-        ) : error ? (
-          <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{error}</div>
         ) : (
           insights.map(insight => {
             const isWarning = insight.type === 'warning';

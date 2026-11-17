@@ -1,10 +1,25 @@
-This # Claude MCP Server for Solv (Budget Tracker)
+This # Claude MCP Connector for Solv (Budget Tracker)
 
-Control your entire financial life directly through Claude! With the **Solv Model Context Protocol (MCP)** server, Claude Desktop and Claude Apps can view, add, update, and manage everything in your budget tracker on your behalf.
+Connect Claude directly to your live Solv web app! You can connect Claude using either the **Remote Cloud Connector URL** (recommended for web/plugins) or the **Desktop Config**.
 
 ---
 
-## 🚀 Quick Setup (Configured for Live Production Web App!)
+## 🌐 1. Live Remote MCP Connector URL (Zero-Installation Plugin)
+
+If your Claude app, claude.ai, or AI client asks for an **MCP Server URL**, **SSE Endpoint**, or **Connector URL**:
+
+```text
+https://budget-tracker-enterprise.vercel.app/api/mcp
+```
+
+- **Transport:** Supports both Server-Sent Events (SSE) and HTTP JSON-RPC.
+- **Protocol Version:** `2024-11-05`
+- **Capabilities:** 30 comprehensive financial tools (Transactions, Accounts, Categories, Budgets, Recurring, Debts, Goals).
+- **CORS:** Enabled for all origins (`*`) so web clients and browsers can connect directly without friction.
+
+---
+
+## 💻 2. Desktop Connector (Claude Desktop)
 
 Your Claude Desktop has already been automatically configured with the MCP server connected directly to your live production web app:
 `C:\Users\Digital Leap\AppData\Roaming\Claude\claude_desktop_config.json`

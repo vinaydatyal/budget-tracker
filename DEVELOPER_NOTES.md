@@ -98,12 +98,13 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
 - Proxies requests through `src/app/api/chat/route.ts`.
 - Passes a highly-minified, stringified JSON subset of the user's `AppState` directly into the system prompt to give the LLM real-time context about the user's finances.
 
-### Model Context Protocol (MCP) Server for Claude Desktop
-- Provides a comprehensive, production-grade Model Context Protocol (MCP) server located in `mcp-server/index.mjs` built with the official `@modelcontextprotocol/sdk` and `zod`.
-- Allows Claude Desktop and Claude Apps to directly inspect and manipulate the user's financial state through natural language.
+### Model Context Protocol (MCP) Server for Claude Desktop & Remote Web Connectors
+- Provides a comprehensive, production-grade Model Context Protocol (MCP) server with dual transports:
+  1. **Remote Cloud Connector Endpoint (`/api/mcp`):** Native Next.js API route supporting both Server-Sent Events (SSE) and direct JSON-RPC HTTP requests. Allows connecting directly from web-based Claude Connectors, claude.ai, mobile apps, or custom AI clients using the live URL: `https://budget-tracker-enterprise.vercel.app/api/mcp`.
+  2. **Local Stdio Script (`mcp-server/index.mjs`):** Built with `@modelcontextprotocol/sdk` and `zod` for local command line / Claude Desktop usage.
 - **Production Integration:** Configured to sync with the live production web app `https://budget-tracker-enterprise.vercel.app` via `BUDGET_APP_URL`.
 - **Data Persistence & Store:** Supports dual-mode persistence (`/tmp/app_state.json` on Vercel, `data/app_state.json` locally, and optional Upstash/Vercel Redis KV when `KV_REST_API_URL` is set).
-- **30 Available Tools:**
+- **30 Available Tools:** Defined and shared in `src/lib/mcpTools.ts`.
   - *Transactions:* `add_transaction`, `add_transactions_bulk`, `get_transactions`, `update_transaction`, `delete_transaction`.
   - *Accounts:* `list_accounts`, `add_account`, `update_account`, `delete_account`.
   - *Categories:* `list_categories`, `add_category`, `update_category`, `delete_category`.

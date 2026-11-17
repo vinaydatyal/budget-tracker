@@ -98,6 +98,28 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
 - Proxies requests through `src/app/api/chat/route.ts`.
 - Passes a highly-minified, stringified JSON subset of the user's `AppState` directly into the system prompt to give the LLM real-time context about the user's finances.
 
+### Model Context Protocol (MCP) Server for Claude Desktop
+- Provides a comprehensive, production-grade Model Context Protocol (MCP) server located in `mcp-server/index.mjs` built with the official `@modelcontextprotocol/sdk` and `zod`.
+- Allows Claude Desktop and Claude Apps to directly inspect and manipulate the user's financial state through natural language.
+- **Data Persistence & Store:** State is persisted to `data/app_state.json` (`serverStorage.ts`).
+- **30 Available Tools:**
+  - *Transactions:* `add_transaction`, `add_transactions_bulk`, `get_transactions`, `update_transaction`, `delete_transaction`.
+  - *Accounts:* `list_accounts`, `add_account`, `update_account`, `delete_account`.
+  - *Categories:* `list_categories`, `add_category`, `update_category`, `delete_category`.
+  - *Budgets:* `list_budget_goals`, `set_budget_goal`, `delete_budget_goal`.
+  - *Recurring & Bills:* `list_recurring`, `add_recurring`, `mark_recurring_paid`, `delete_recurring`.
+  - *Debts & Loans:* `list_debts`, `add_debt`, `record_debt_payment`, `delete_debt`.
+  - *Savings Goals:* `list_savings_goals`, `add_savings_goal`, `contribute_savings_goal`, `delete_savings_goal`.
+  - *Intelligence & Analytics:* `get_financial_overview` (executive dashboard with Net Worth, liquid cash, monthly cash flow, alerts), `get_category_spending`.
+- **Bidirectional Real-time Synchronization:**
+  - Next.js exposes `GET /api/sync` and `POST /api/sync`.
+  - When the browser initializes, it reconciles local storage with `data/app_state.json`.
+  - Debounced auto-save pushes mutations from the browser to the server file.
+  - A window focus listener (`focus`) in `AppContext.tsx` automatically detects when Claude has written new transactions via MCP in the background, updating the UI immediately with a toast notification.
+- **Installer & Configuration:**
+  - `scripts/install-claude-mcp.js` (or `npm run setup:mcp`) automatically locates Claude's configuration file (`%APPDATA%\Claude\claude_desktop_config.json`) and registers the MCP server.
+  - Automated integration test suite: `npm run test:mcp` (`scripts/test-mcp.mjs`).
+
 ### Professional Accountant Exports
 - Uses `papaparse` utility (`src/lib/export.ts`) to instantly generate multi-file CSV zip packets.
 - Automatically structures the `AppState.ledger` arrays into traditional Double-Entry T-account formats for tax seasons.
@@ -109,6 +131,7 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
 - **Phase 5:** True Cloud Syncing (Firestore), PWA Configuration (manifest + service worker), ICICI Bank UAT Sync, AI Chat Advisor.
 - **Phase 6 (Rebrand & UI Polish):** Rebranded to "Solv" with the "SV" heart logo. Overhauled the Shared Expenses UI to include visual progress bars and avatars.
 - **Phase 7 (Partial Settlements):** Implemented logic to allow partial repayments on IOUs (`settledAmount` tracking) and added an intelligent offset auto-categorization system to generate exact inverse income transactions to keep net-worth reports flawless.
+- **Phase 8 (Claude Model Context Protocol MCP & Sync Engine):** Created standalone, high-performance MCP server for Claude Desktop with 30 tools to perform every action in the application (single & bulk transaction management, accounts, categories, budgets, recurring bills, debt payments, savings goals, and real-time financial snapshots). Built bidirectional sync engine between Claude Desktop and the web app with focus-triggered auto-updates.
 
 ## 9. Where to Find Things
 

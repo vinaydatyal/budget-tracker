@@ -526,6 +526,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsInitializing(true);
       let saved = loadState();
 
+      // Sync with Server/MCP storage
+      try {
+        const syncRes = await fetch('/api/sync');
+        if (syncRes.ok) {
+          const syncData = await syncRes.json();
+          const serverState: AppState = syncData.state;
+          if (serverState) {
+            const localTxnIds = new Set((saved.transactions || []).map(t => t.id));
+            const serverTxns = serverState.transactions || [];
+            const hasNewServerTxns = serverTxns.some(t => !localTxnIds.has(t.id));
+
+            if (hasNewServerTxns || (saved.transactions.length === 0 && serverTxns.length > 0)) {
+              const mergedTxns = [...saved.transactions];
+              serverTxns.forEach(t => {
+                if (!localTxnIds.has(t.id)) {
+                  mergedTxns.push(t);
+                  localTxnIds.add(t.id);
+                }
+              });
+              saved = {
+                ...saved,
+                ...serverState,
+                transactions: mergedTxns
+              };
+            } else if (saved.transactions.length > 0 && serverTxns.length === 0) {
+              fetch('/api/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state: saved, merge: true })
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch (err) {
+        // Offline / serverless fallback
+      }
+
       if (user && googleToken) {
         try {
           const fileId = await findOrCreateBackupFile(googleToken);
@@ -637,7 +674,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (state.transactions.length > 0 || state.accounts.length > 0) {
       initialLoadRef.current = true;
     }
+
+    // Debounced sync to Server / MCP storage
+    if (initialLoadRef.current) {
+      const serverSyncTimer = setTimeout(() => {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state, merge: true })
+        }).catch(() => {});
+      }, 1500);
+      return () => clearTimeout(serverSyncTimer);
+    }
   }, [state, user, googleToken, driveFileId]);
+
+  // Auto-sync when browser tab regains focus (e.g. after updating data via Claude Desktop MCP)
+  useEffect(() => {
+    const handleSyncOnFocus = async () => {
+      try {
+        const res = await fetch('/api/sync');
+        if (!res.ok) return;
+        const data = await res.json();
+        const serverState: AppState = data.state;
+        if (!serverState || !serverState.transactions) return;
+
+        const currentTxnIds = new Set(state.transactions.map(t => t.id));
+        const newTxns = serverState.transactions.filter(t => !currentTxnIds.has(t.id));
+
+        if (newTxns.length > 0) {
+          dispatch({ type: 'LOAD_STATE', payload: serverState });
+          toast.success(`✨ Synced ${newTxns.length} new transaction(s) from Claude!`, { id: 'mcp-sync-toast' });
+        }
+      } catch (err) {
+        // Offline / background
+      }
+    };
+
+    window.addEventListener('focus', handleSyncOnFocus);
+    return () => window.removeEventListener('focus', handleSyncOnFocus);
+  }, [state.transactions]);
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       window.addEventListener('load', function() {

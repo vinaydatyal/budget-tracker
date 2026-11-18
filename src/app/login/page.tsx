@@ -43,23 +43,34 @@ function LoginForm() {
   const [errorMessage, setErrorMessage] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
+  const processedLinkRef = React.useRef(false);
+
   // Auto-detect incoming Email Link from URL
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const href = window.location.href;
-      if (href.includes('apiKey=') && (href.includes('mode=signIn') || href.includes('oobCode='))) {
-        setIsSubmitting(true);
-        completeMagicLinkSignIn()
-          .then(() => {
-            router.push(redirectUrl);
-          })
-          .catch((err) => {
-            setErrorMessage(err?.message || 'Invalid or expired sign-in link.');
-          })
-          .finally(() => setIsSubmitting(false));
-      }
+    if (typeof window === 'undefined') return;
+    if (processedLinkRef.current || user) return;
+
+    const href = window.location.href;
+    if (href.includes('apiKey=') && (href.includes('mode=signIn') || href.includes('oobCode='))) {
+      processedLinkRef.current = true;
+      setIsSubmitting(true);
+
+      // Clean the query parameters from URL bar immediately so browser cannot re-trigger it
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {}
+
+      completeMagicLinkSignIn(undefined, href)
+        .then(() => {
+          router.push(redirectUrl);
+        })
+        .catch((err) => {
+          if (err?.code === 'auth/invalid-action-code') return;
+          setErrorMessage(err?.message || 'Invalid or expired sign-in link.');
+        })
+        .finally(() => setIsSubmitting(false));
     }
-  }, [completeMagicLinkSignIn, redirectUrl, router]);
+  }, [completeMagicLinkSignIn, redirectUrl, router, user]);
 
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);

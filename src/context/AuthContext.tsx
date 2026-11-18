@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const isFirebaseConfigured = !!auth;
+  const isProcessingLinkRef = React.useRef(false);
 
   useEffect(() => {
     if (!auth) {
@@ -130,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const completeMagicLinkSignIn = async (emailParam?: string, linkUrl?: string) => {
     if (!auth) return;
+    if (isProcessingLinkRef.current || auth.currentUser) return;
+
     const url = linkUrl || (typeof window !== 'undefined' ? window.location.href : '');
     if (!url || !isSignInWithEmailLink(auth, url)) return;
 
@@ -145,16 +148,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    isProcessingLinkRef.current = true;
+
     try {
       await signInWithEmailLink(auth, email, url);
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem('emailForSignIn');
+        try {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch {}
       }
       toast.success('Signed in successfully via email link!', { icon: '🎉' });
     } catch (error: any) {
+      // If code was already consumed but user is already signed in, ignore benign duplicate error
+      if (error?.code === 'auth/invalid-action-code' && (auth.currentUser || user)) {
+        return;
+      }
       console.error('Error signing in with email link', error);
       toast.error(error.message || 'Failed to complete sign in with link.');
       throw error;
+    } finally {
+      setTimeout(() => {
+        isProcessingLinkRef.current = false;
+      }, 3000);
     }
   };
 

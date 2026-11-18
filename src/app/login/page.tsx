@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -14,20 +14,52 @@ import {
   Mail,
   KeyRound,
   UserPlus,
-  LogIn
+  LogIn,
+  Send,
+  Sparkles
 } from 'lucide-react';
 
 function LoginForm() {
-  const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut } = useAuth();
+  const { 
+    user, 
+    loading, 
+    signInWithGoogle, 
+    signInWithEmail, 
+    signUpWithEmail, 
+    sendMagicLink, 
+    completeMagicLinkSignIn, 
+    signOut 
+  } = useAuth();
+  
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
+  const [authMethod, setAuthMethod] = useState<'magic' | 'password'>('magic');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  // Auto-detect incoming Email Link from URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const href = window.location.href;
+      if (href.includes('apiKey=') && (href.includes('mode=signIn') || href.includes('oobCode='))) {
+        setIsSubmitting(true);
+        completeMagicLinkSignIn()
+          .then(() => {
+            router.push(redirectUrl);
+          })
+          .catch((err) => {
+            setErrorMessage(err?.message || 'Invalid or expired sign-in link.');
+          })
+          .finally(() => setIsSubmitting(false));
+      }
+    }
+  }, [completeMagicLinkSignIn, redirectUrl, router]);
 
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
@@ -43,7 +75,25 @@ function LoginForm() {
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handleMagicLinkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setErrorMessage('Please enter your email address.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage('');
+    try {
+      await sendMagicLink(email);
+      setMagicLinkSent(true);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to send magic link. Please check your email.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setErrorMessage('Please fill in both email and password.');
@@ -228,67 +278,7 @@ function LoginForm() {
           ) : (
             /* Logged Out / Login Form */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {/* Tab Selector: Sign In vs Sign Up */}
-              <div style={{
-                display: 'flex',
-                background: 'var(--bg-input)',
-                borderRadius: 10,
-                padding: 3,
-                border: '1px solid var(--border)'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => { setAuthMode('signin'); setErrorMessage(''); }}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    borderRadius: 8,
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: authMode === 'signin' ? 'var(--accent)' : 'transparent',
-                    color: authMode === 'signin' ? '#fff' : 'var(--text-muted)'
-                  }}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setAuthMode('signup'); setErrorMessage(''); }}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    borderRadius: 8,
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: authMode === 'signup' ? 'var(--accent)' : 'transparent',
-                    color: authMode === 'signup' ? '#fff' : 'var(--text-muted)'
-                  }}
-                >
-                  Create Account
-                </button>
-              </div>
-
-              {errorMessage && (
-                <div style={{
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  background: 'var(--expense-subtle)',
-                  border: '1px solid var(--expense)',
-                  color: 'var(--expense)',
-                  fontSize: 13,
-                  lineHeight: 1.4
-                }}>
-                  {errorMessage}
-                </div>
-              )}
-
-              {/* 1. Google 1-Click Sign-in via Firebase */}
+              {/* Google 1-Click Sign-in */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
@@ -330,94 +320,309 @@ function LoginForm() {
                     d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                   />
                 </svg>
-                <span>{isSubmitting ? 'Authenticating with Firebase...' : 'Continue with Google'}</span>
+                <span>{isSubmitting ? 'Connecting...' : 'Continue with Google'}</span>
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '2px 0' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or with email</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or sign in with email</span>
                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
               </div>
 
-              {/* 2. Email & Password Form via Firebase */}
-              <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                    Email Address
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <Mail size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input
-                      type="email"
-                      required
-                      placeholder="you@domain.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px 10px 36px',
-                        background: 'var(--bg-input)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 10,
-                        color: 'var(--text-main)',
-                        fontSize: 14,
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                    Password
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <KeyRound size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px 10px 36px',
-                        background: 'var(--bg-input)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 10,
-                        color: 'var(--text-main)',
-                        fontSize: 14,
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                </div>
-
+              {/* Selector: Passwordless Magic Link vs Password */}
+              <div style={{
+                display: 'flex',
+                background: 'var(--bg-input)',
+                borderRadius: 10,
+                padding: 3,
+                border: '1px solid var(--border)'
+              }}>
                 <button
-                  type="submit"
-                  disabled={isSubmitting || loading}
-                  className="btn btn-primary"
+                  type="button"
+                  onClick={() => { setAuthMethod('magic'); setErrorMessage(''); }}
                   style={{
-                    width: '100%',
-                    justifyContent: 'center',
-                    padding: '11px 18px',
-                    fontSize: 14,
+                    flex: 1,
+                    padding: '8px 10px',
+                    fontSize: 12,
                     fontWeight: 600,
-                    marginTop: 4,
-                    boxShadow: '0 4px 12px var(--accent-glow)'
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: authMethod === 'magic' ? 'var(--accent)' : 'transparent',
+                    color: authMethod === 'magic' ? '#fff' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
                   }}
                 >
-                  {isSubmitting ? (
-                    'Processing...'
-                  ) : authMode === 'signin' ? (
-                    <><LogIn size={16} /> Sign In</>
-                  ) : (
-                    <><UserPlus size={16} /> Create Free Account</>
-                  )}
+                  <Sparkles size={14} /> Passwordless Link
                 </button>
-              </form>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMethod('password'); setErrorMessage(''); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: authMethod === 'password' ? 'var(--accent)' : 'transparent',
+                    color: authMethod === 'password' ? '#fff' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                >
+                  <KeyRound size={14} /> Password
+                </button>
+              </div>
+
+              {errorMessage && (
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'var(--expense-subtle)',
+                  border: '1px solid var(--expense)',
+                  color: 'var(--expense)',
+                  fontSize: 13,
+                  lineHeight: 1.4
+                }}>
+                  {errorMessage}
+                </div>
+              )}
+
+              {/* Method 1: Passwordless Email Link (Magic Link) */}
+              {authMethod === 'magic' && (
+                magicLinkSent ? (
+                  <div style={{
+                    padding: '20px 16px',
+                    background: 'var(--income-subtle)',
+                    border: '1px solid var(--income)',
+                    borderRadius: 12,
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 10
+                  }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: 'var(--income)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Mail size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-main)', marginBottom: 4 }}>
+                        Sign-in link sent!
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        We sent a magic sign-in link to <strong>{email}</strong>. Open your email on this device and click the link to log in.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMagicLinkSent(false)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--accent)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        marginTop: 4
+                      }}
+                    >
+                      Use a different email or method
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleMagicLinkSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                        Email Address
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <Mail size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input
+                          type="email"
+                          required
+                          placeholder="you@domain.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px 10px 36px',
+                            background: 'var(--bg-input)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 10,
+                            color: 'var(--text-main)',
+                            fontSize: 14,
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
+                        No password needed! We will email you a secure link to log in instantly.
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || loading}
+                      className="btn btn-primary"
+                      style={{
+                        width: '100%',
+                        justifyContent: 'center',
+                        padding: '11px 18px',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        marginTop: 4,
+                        boxShadow: '0 4px 12px var(--accent-glow)'
+                      }}
+                    >
+                      <Send size={15} /> {isSubmitting ? 'Sending link...' : 'Send Magic Sign-In Link'}
+                    </button>
+                  </form>
+                )
+              )}
+
+              {/* Method 2: Standard Email & Password */}
+              {authMethod === 'password' && (
+                <form onSubmit={handlePasswordAuth} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{
+                    display: 'flex',
+                    background: 'var(--bg-elevated)',
+                    borderRadius: 8,
+                    padding: 2,
+                    marginBottom: 4
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('signin')}
+                      style={{
+                        flex: 1,
+                        padding: '6px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: authMode === 'signin' ? 'var(--accent)' : 'transparent',
+                        color: authMode === 'signin' ? '#fff' : 'var(--text-muted)'
+                      }}
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('signup')}
+                      style={{
+                        flex: 1,
+                        padding: '6px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: authMode === 'signup' ? 'var(--accent)' : 'transparent',
+                        color: authMode === 'signup' ? '#fff' : 'var(--text-muted)'
+                      }}
+                    >
+                      New Account
+                    </button>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                      Email Address
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <Mail size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                      <input
+                        type="email"
+                        required
+                        placeholder="you@domain.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 36px',
+                          background: 'var(--bg-input)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 10,
+                          color: 'var(--text-main)',
+                          fontSize: 14,
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                      Password
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <KeyRound size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                      <input
+                        type="password"
+                        required
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 36px',
+                          background: 'var(--bg-input)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 10,
+                          color: 'var(--text-main)',
+                          fontSize: 14,
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || loading}
+                    className="btn btn-primary"
+                    style={{
+                      width: '100%',
+                      justifyContent: 'center',
+                      padding: '11px 18px',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      marginTop: 4,
+                      boxShadow: '0 4px 12px var(--accent-glow)'
+                    }}
+                  >
+                    {isSubmitting ? (
+                      'Processing...'
+                    ) : authMode === 'signin' ? (
+                      <><LogIn size={16} /> Sign In</>
+                    ) : (
+                      <><UserPlus size={16} /> Create Free Account</>
+                    )}
+                  </button>
+                </form>
+              )}
 
               {/* Guest Access Alternative */}
               <div style={{ textAlign: 'center', borderTop: '1px solid var(--border)', paddingTop: 14 }}>

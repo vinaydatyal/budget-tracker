@@ -6,7 +6,10 @@ import {
   signInWithPopup, 
   signOut as fbSignOut,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { toast } from 'react-hot-toast';
@@ -17,6 +20,8 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string) => Promise<void>;
+  sendMagicLink: (email: string) => Promise<void>;
+  completeMagicLinkSignIn: (emailParam?: string, linkUrl?: string) => Promise<void>;
   signOut: () => Promise<void>;
   isFirebaseConfigured: boolean;
   googleToken: string | null;
@@ -100,6 +105,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sendMagicLink = async (email: string) => {
+    if (!auth) {
+      toast.error('Firebase is not configured!', { duration: 6000 });
+      return;
+    }
+    try {
+      const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://budget-tracker-enterprise.vercel.app/login';
+      const actionCodeSettings = {
+        url: redirectUrl,
+        handleCodeInApp: true,
+      };
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('emailForSignIn', email);
+      }
+      toast.success('Magic sign-in link sent to your email! Please check your inbox.', { icon: '✉️', duration: 7000 });
+    } catch (error: any) {
+      console.error('Error sending magic link', error);
+      toast.error(error.message || 'Failed to send sign-in link.');
+      throw error;
+    }
+  };
+
+  const completeMagicLinkSignIn = async (emailParam?: string, linkUrl?: string) => {
+    if (!auth) return;
+    const url = linkUrl || (typeof window !== 'undefined' ? window.location.href : '');
+    if (!url || !isSignInWithEmailLink(auth, url)) return;
+
+    let email = emailParam;
+    if (!email && typeof window !== 'undefined') {
+      email = window.localStorage.getItem('emailForSignIn') || '';
+    }
+    if (!email && typeof window !== 'undefined') {
+      email = window.prompt('Please confirm your email address to complete sign in') || '';
+    }
+    if (!email) {
+      toast.error('Email address required to finish sign in.');
+      return;
+    }
+
+    try {
+      await signInWithEmailLink(auth, email, url);
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('emailForSignIn');
+      }
+      toast.success('Signed in successfully via email link!', { icon: '🎉' });
+    } catch (error: any) {
+      console.error('Error signing in with email link', error);
+      toast.error(error.message || 'Failed to complete sign in with link.');
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     if (!auth) return;
     try {
@@ -117,6 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithGoogle, 
       signInWithEmail, 
       signUpWithEmail, 
+      sendMagicLink,
+      completeMagicLinkSignIn,
       signOut, 
       isFirebaseConfigured, 
       googleToken: null 

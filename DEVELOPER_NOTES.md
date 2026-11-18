@@ -149,6 +149,11 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Per-User Local Cache Partitioning (`storage.ts`):** Keyed browser caching by user ID (`budget_tracker_state_${userId}` vs `budget_tracker_state_guest`), preventing data leakage between guest sessions and different user accounts.
   - **Safe Sign-Out State Reset (`AppContext.tsx`):** On sign-out, resets active memory state to a clean default state so subsequent logins start with pristine, isolated data.
   - **Real-Time 2-Way Sync:** Automatically persists ledger mutations in real time to the authenticated user's Firestore vault (`users/{user.uid}`) with debounced synchronization.
+- **Phase 12 (Firebase Passwordless Magic Email Link Authentication):**
+  - **Email Link Provider (`AuthContext.tsx`):** Implemented `sendMagicLink` (`sendSignInLinkToEmail`) and `completeMagicLinkSignIn` (`signInWithEmailLink`) using Firebase's modern action code settings.
+  - **Auto-Detection in Login UI (`/login`):** Added URL parser to detect incoming verification parameters (`apiKey`, `oobCode`, `mode=signIn`) and auto-authenticate the session into Firestore without requiring passwords.
+  - **Zero-Password UX:** Added passwordless link tab to `/login` UI allowing one-click sign in by entering only an email address.
+  - **Cross-Platform Android Specification:** Outlined Android intent-filter requirements for `budgetpro-c85b5.firebaseapp.com/__/auth/links` to support seamless app-link deep linking in mobile builds.
 
 ## 9. Where to Find Things
 

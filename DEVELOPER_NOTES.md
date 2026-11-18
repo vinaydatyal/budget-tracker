@@ -155,6 +155,10 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Zero-Password UX:** Added passwordless link tab to `/login` UI allowing one-click sign in by entering only an email address.
   - **Double-Invocation Guard:** Protected against duplicate `signInWithEmailLink` triggers from React StrictMode/re-renders by debouncing execution with `processedLinkRef` and cleaning URL query parameters (`window.history.replaceState`) immediately upon link consumption to prevent benign `auth/invalid-action-code` error toasts.
   - **Cross-Platform Android Specification:** Outlined Android intent-filter requirements for `budgetpro-c85b5.firebaseapp.com/__/auth/links` to support seamless app-link deep linking in mobile builds.
+- **Phase 13 (Live Cloud Firestore Production Deployment & Rule Verification):**
+  - **Rules Deployment:** Deployed security rules on Cloud Firestore (`nam5`) enforcing strict user-boundary authorization (`match /users/{userId} { allow read, write: if request.auth != null && request.auth.uid == userId; }`).
+  - **Database Status:** Verified database instance `(default)` in Firebase Console is active with real-time updates enabled.
+  - **Real-Time Data Pipeline:** Confirmed client-to-cloud sync pipeline (`initOrLoadUser` and `saveUserCloudState`). User accounts authenticate via Google OAuth or Magic Links, auto-provision user isolation documents under `/users/{uid}`, and continuously sync ledger transactions, budgets, debts, and accounts across all signed-in sessions without session expiration.
 
 ## 9. Where to Find Things
 

@@ -80,10 +80,22 @@ export const DEFAULT_STATE: AppState = {
   preferences: DEFAULT_PREFERENCES,
 };
 
-export function loadState(): AppState {
+export function getUserStorageKey(userId?: string | null): string {
+  if (!userId || userId === 'guest') return 'budget_tracker_state_guest';
+  return `budget_tracker_state_${userId}`;
+}
+
+export function loadState(userId?: string | null): AppState {
   if (typeof window === 'undefined') return DEFAULT_STATE;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = getUserStorageKey(userId);
+    let raw = localStorage.getItem(key);
+    
+    // Backwards compatibility for existing guests before user-keyed storage was introduced
+    if (!raw && (!userId || userId === 'guest')) {
+      raw = localStorage.getItem(STORAGE_KEY);
+    }
+
     if (!raw) return DEFAULT_STATE;
     const parsed = JSON.parse(raw) as AppState;
     
@@ -132,10 +144,11 @@ export function loadState(): AppState {
   }
 }
 
-export function saveState(state: AppState): void {
+export function saveState(state: AppState, userId?: string | null): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const key = getUserStorageKey(userId);
+    localStorage.setItem(key, JSON.stringify(state));
   } catch {
     console.error('Failed to save state to localStorage');
   }

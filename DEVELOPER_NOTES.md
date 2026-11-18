@@ -144,6 +144,11 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Firebase Auth Providers:** Expanded authentication to support both 1-Click Google OAuth and native Firebase Email & Password authentication (`signInWithEmailAndPassword`, `createUserWithEmailAndPassword`).
   - **Dual Auth Mode UI (`/login`):** Built clean tabbed interface allowing users without a Google account to create a password-protected account directly with their email.
   - **Firebase Production Checklist:** Documented Firestore security rules (`users/{userId}` user isolation), Authorized Domains configuration for Vercel, and Cloud Firestore provisioning requirements.
+- **Phase 11 (Dedicated New User Initialization & Firestore User Profile Isolation):**
+  - **New User Detection (`initOrLoadUser` in `firestoreSync.ts`):** When any user signs in via Google OAuth or Email/Password, checks if `users/{user.uid}` exists in Firestore. If new, initializes a full user profile (`uid`, `email`, `displayName`, `photoURL`, `authProvider: 'google.com'`, `createdAt`, `lastLoginAt`, and a clean `DEFAULT_STATE`).
+  - **Per-User Local Cache Partitioning (`storage.ts`):** Keyed browser caching by user ID (`budget_tracker_state_${userId}` vs `budget_tracker_state_guest`), preventing data leakage between guest sessions and different user accounts.
+  - **Safe Sign-Out State Reset (`AppContext.tsx`):** On sign-out, resets active memory state to a clean default state so subsequent logins start with pristine, isolated data.
+  - **Real-Time 2-Way Sync:** Automatically persists ledger mutations in real time to the authenticated user's Firestore vault (`users/{user.uid}`) with debounced synchronization.
 
 ## 9. Where to Find Things
 

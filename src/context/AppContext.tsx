@@ -5,7 +5,7 @@ import { AppState, AppAction, Transaction, Category, BudgetGoal, Account, Recurr
 import { loadState, saveState, DEFAULT_STATE } from '@/lib/storage';
 import { DEMO_TRANSACTIONS } from '@/lib/demoData';
 import { useAuth } from './AuthContext';
-import { loadUserCloudState, saveUserCloudState } from '@/lib/firestoreSync';
+import { initOrLoadUser, loadUserCloudState, saveUserCloudState } from '@/lib/firestoreSync';
 import { toast } from 'react-hot-toast';
 import { QUESTS } from '@/lib/achievements';
 import { LedgerEntry } from '@/lib/types';
@@ -498,10 +498,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, DEFAULT_STATE);
   const { user, loading: authLoading } = useAuth();
   const [isInitializing, setIsInitializing] = React.useState(true);
+  const initialLoadRef = React.useRef(false);
+  const previousUserUidRef = React.useRef<string | null | undefined>(undefined);
 
   // Evaluate Achievements
   useEffect(() => {
-    // We wait for initial load to finish by checking if transactions exist (or just evaluating whenever state changes)
     if (state.transactions.length === 0 && state.debts.length === 0 && state.savingsGoals.length === 0) return;
     
     QUESTS.forEach(quest => {
@@ -523,65 +524,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     async function loadData() {
       setIsInitializing(true);
-      let saved = loadState();
-
-      // Sync with Server/MCP storage
-      try {
-        const syncRes = await fetch('/api/sync');
-        if (syncRes.ok) {
-          const syncData = await syncRes.json();
-          const serverState: AppState = syncData.state;
-          if (serverState) {
-            const localTxnIds = new Set((saved.transactions || []).map(t => t.id));
-            const serverTxns = serverState.transactions || [];
-            const hasNewServerTxns = serverTxns.some(t => !localTxnIds.has(t.id));
-
-            if (hasNewServerTxns || (saved.transactions.length === 0 && serverTxns.length > 0)) {
-              const mergedTxns = [...saved.transactions];
-              serverTxns.forEach(t => {
-                if (!localTxnIds.has(t.id)) {
-                  mergedTxns.push(t);
-                  localTxnIds.add(t.id);
-                }
-              });
-              saved = {
-                ...saved,
-                ...serverState,
-                transactions: mergedTxns
-              };
-            } else if (saved.transactions.length > 0 && serverTxns.length === 0) {
-              fetch('/api/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ state: saved, merge: true })
-              }).catch(() => {});
-            }
-          }
-        }
-      } catch (err) {
-        // Offline / serverless fallback
-      }
+      initialLoadRef.current = false;
+      let saved: AppState = DEFAULT_STATE;
 
       if (user) {
+        // Authenticated with Google or Email: Load or create new user in Firebase Firestore
         try {
-          const cloudData = await loadUserCloudState(user.uid);
-          if (cloudData) {
-            saved = cloudData;
-          } else {
-            // First time login: migrate local state to cloud
-            await saveUserCloudState(user.uid, saved);
+          const { state: cloudState, isNewUser } = await initOrLoadUser(user);
+          saved = cloudState;
+          if (isNewUser) {
+            toast.success(`Welcome to Solv! New account created in Firebase.`, { icon: '🎉' });
           }
         } catch (error: any) {
-          console.error("Cloud storage load error:", error);
+          console.warn("Could not load cloud user, using offline cache:", error);
+          saved = loadState(user.uid);
+        }
+      } else {
+        // Guest mode (unauthenticated)
+        // If a user just signed out, start with clean DEFAULT_STATE
+        if (previousUserUidRef.current) {
+          saved = DEFAULT_STATE;
+          saveState(DEFAULT_STATE, 'guest');
+        } else {
+          saved = loadState('guest');
+          
+          // Optionally sync with Server/MCP storage in guest mode
+          try {
+            const syncRes = await fetch('/api/sync');
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              const serverState: AppState = syncData.state;
+              if (serverState) {
+                const localTxnIds = new Set((saved.transactions || []).map(t => t.id));
+                const serverTxns = serverState.transactions || [];
+                const hasNewServerTxns = serverTxns.some(t => !localTxnIds.has(t.id));
+
+                if (hasNewServerTxns || (saved.transactions.length === 0 && serverTxns.length > 0)) {
+                  const mergedTxns = [...saved.transactions];
+                  serverTxns.forEach(t => {
+                    if (!localTxnIds.has(t.id)) {
+                      mergedTxns.push(t);
+                      localTxnIds.add(t.id);
+                    }
+                  });
+                  saved = {
+                    ...saved,
+                    ...serverState,
+                    transactions: mergedTxns
+                  };
+                }
+              }
+            }
+          } catch {
+            // Offline
+          }
         }
       }
 
-      // Process Recurring
+      // Process Recurring Transactions
       const todayStr = new Date().toISOString().slice(0, 10);
       const generatedTxns: Transaction[] = [];
       let updatedRecurring = false;
       
-      const processedRecurring = saved.recurringTransactions.map(r => {
+      const processedRecurring = (saved.recurringTransactions || []).map(r => {
         if (!r.active || r.nextDueDate > todayStr) return r;
         
         let nextDateObj = new Date(r.nextDueDate);
@@ -627,10 +632,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (updatedRecurring) {
         saved.recurringTransactions = processedRecurring;
-        saved.transactions = [...generatedTxns, ...saved.transactions];
+        saved.transactions = [...generatedTxns, ...(saved.transactions || [])];
       }
 
       dispatch({ type: 'LOAD_STATE', payload: saved });
+      saveState(saved, user ? user.uid : 'guest');
+      initialLoadRef.current = true;
+      previousUserUidRef.current = user ? user.uid : null;
       setIsInitializing(false);
     }
 
@@ -638,39 +646,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user, authLoading]);
 
   // Cloud Sync Logic
-  const initialLoadRef = React.useRef(false);
   useEffect(() => {
-    saveState(state); // Always save to local storage
+    if (!initialLoadRef.current) return;
+
+    // Save to local storage for current user or guest
+    saveState(state, user ? user.uid : 'guest');
     
-    if (initialLoadRef.current && user) {
+    if (user) {
       const syncToCloud = async () => {
         try {
-          await saveUserCloudState(user.uid, state);
+          await saveUserCloudState(user, state);
         } catch (error: any) {
           console.error("Cloud sync error:", error);
         }
       };
       
-      const timeoutId = setTimeout(syncToCloud, 1500);
+      const timeoutId = setTimeout(syncToCloud, 1000);
       return () => clearTimeout(timeoutId);
     }
-    
-    // Mark initial load as true once state is populated
-    if (state.transactions.length > 0 || state.accounts.length > 0) {
-      initialLoadRef.current = true;
-    }
 
-    // Debounced sync to Server / MCP storage
-    if (initialLoadRef.current) {
-      const serverSyncTimer = setTimeout(() => {
-        fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state, merge: true })
-        }).catch(() => {});
-      }, 1500);
-      return () => clearTimeout(serverSyncTimer);
-    }
+    // Debounced sync to Server / MCP storage (guest or local MCP)
+    const serverSyncTimer = setTimeout(() => {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state, merge: true })
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(serverSyncTimer);
   }, [state, user]);
 
   // Auto-sync when browser tab regains focus (e.g. after updating data via Claude Desktop MCP)

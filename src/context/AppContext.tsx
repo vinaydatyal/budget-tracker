@@ -539,6 +539,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn("Could not load cloud user, using offline cache:", error);
           saved = loadState(user.uid);
         }
+
+        // Bridge: If Cloud Firestore user currently has no transactions, check if Claude pushed transactions via MCP
+        if (!saved.transactions || saved.transactions.length === 0) {
+          try {
+            const syncRes = await fetch('/api/sync');
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              const serverState: AppState = syncData.state;
+              if (serverState && serverState.transactions && serverState.transactions.length > 0) {
+                saved = {
+                  ...saved,
+                  ...serverState,
+                  transactions: serverState.transactions,
+                  accounts: serverState.accounts?.length ? serverState.accounts : saved.accounts,
+                  categories: serverState.categories?.length ? serverState.categories : saved.categories,
+                  budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : saved.budgetGoals,
+                  recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : saved.recurringTransactions,
+                };
+                // Automatically persist the seeded data into Cloud Firestore
+                saveUserCloudState(user, saved).catch(() => {});
+                toast.success(`✨ Imported ${serverState.transactions.length} records into your Cloud Vault!`, { id: 'cloud-seed-toast' });
+              }
+            }
+          } catch {
+            // Offline
+          }
+        }
       } else {
         // Guest mode (unauthenticated)
         // If a user just signed out, start with clean DEFAULT_STATE
@@ -666,14 +693,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Debounced sync to Server / MCP storage (guest or local MCP)
-    const serverSyncTimer = setTimeout(() => {
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state, merge: true })
-      }).catch(() => {});
-    }, 1500);
-    return () => clearTimeout(serverSyncTimer);
+    // Only sync if in guest mode or if authenticated state has actual content to prevent clobbering MCP data
+    if (!user || state.transactions.length > 0) {
+      const serverSyncTimer = setTimeout(() => {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state, merge: true })
+        }).catch(() => {});
+      }, 1500);
+      return () => clearTimeout(serverSyncTimer);
+    }
   }, [state, user]);
 
   // Auto-sync when browser tab regains focus (e.g. after updating data via Claude Desktop MCP)

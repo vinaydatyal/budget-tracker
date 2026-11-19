@@ -159,6 +159,11 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Rules Deployment:** Deployed security rules on Cloud Firestore (`nam5`) enforcing strict user-boundary authorization (`match /users/{userId} { allow read, write: if request.auth != null && request.auth.uid == userId; }`).
   - **Database Status:** Verified database instance `(default)` in Firebase Console is active with real-time updates enabled.
   - **Real-Time Data Pipeline:** Confirmed client-to-cloud sync pipeline (`initOrLoadUser` and `saveUserCloudState`). User accounts authenticate via Google OAuth or Magic Links, auto-provision user isolation documents under `/users/{uid}`, and continuously sync ledger transactions, budgets, debts, and accounts across all signed-in sessions without session expiration.
+- **Phase 14 (Non-Destructive MCP Union Merging & Firestore Auto-Ingestion Bridge):**
+  - **The Root Cause:** Claude Desktop's MCP server was writing locally to `data/app_state.json` and posting to Vercel's ephemeral `/api/sync`. When Claude invoked a read tool, `readState()` in `mcp-server/index.mjs` fetched `/api/sync`, where serverless cold-starts or empty browser syncs overwrote custom accounts, custom categories, and budgets with the default 7-account scaffold.
+  - **Non-Destructive Union Merging (`/api/sync` & `mcp-server`):** Replaced destructive array overwrites with ID and name union merging. Accounts, categories, budgets, recurring transactions, debts, and savings goals are merged preserving custom entries and preventing default scaffolds from obliterating customized entities.
+  - **Firestore Ingestion Bridge (`AppContext.tsx`):** When a user logs in to Firebase and has an empty Firestore profile, the app automatically checks `/api/sync` for records pushed by Claude MCP, ingests them into state, and immediately commits them permanently to Cloud Firestore (`users/{uid}`).
+  - **Debounced Sync Protection:** Guarded browser-to-server sync so an empty authenticated state cannot overwrite `/api/sync` data.
 
 ## 9. Where to Find Things
 

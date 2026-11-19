@@ -145,17 +145,61 @@ async function readState() {
             }
           });
 
+          // Non-destructive union merge for accounts
+          const mergedAccounts = [...(localState.accounts || [])];
+          const accKey = (a) => `${a.id || ''}:${(a.name || '').trim().toLowerCase()}`;
+          const seenAccounts = new Set(mergedAccounts.map(accKey));
+          (serverState.accounts || []).forEach(a => {
+            const k = accKey(a);
+            if (!seenAccounts.has(k)) {
+              mergedAccounts.push(a);
+              seenAccounts.add(k);
+            }
+          });
+
+          // Non-destructive union merge for categories
+          const mergedCategories = [...(localState.categories || [])];
+          const catKey = (c) => `${c.id || ''}:${(c.name || '').trim().toLowerCase()}`;
+          const seenCategories = new Set(mergedCategories.map(catKey));
+          (serverState.categories || []).forEach(c => {
+            const k = catKey(c);
+            if (!seenCategories.has(k)) {
+              mergedCategories.push(c);
+              seenCategories.add(k);
+            }
+          });
+
+          // Non-destructive union merge for budgets
+          const mergedBudgets = [...(localState.budgetGoals || [])];
+          const seenBudgets = new Set(mergedBudgets.map(b => b.id));
+          (serverState.budgetGoals || []).forEach(b => {
+            if (!seenBudgets.has(b.id)) {
+              mergedBudgets.push(b);
+              seenBudgets.add(b.id);
+            }
+          });
+
+          // Non-destructive union merge for recurring
+          const mergedRecurring = [...(localState.recurringTransactions || [])];
+          const seenRecurring = new Set(mergedRecurring.map(r => r.id));
+          (serverState.recurringTransactions || []).forEach(r => {
+            if (!seenRecurring.has(r.id)) {
+              mergedRecurring.push(r);
+              seenRecurring.add(r.id);
+            }
+          });
+
           const mergedState = {
             ...DEFAULT_STATE,
-            ...serverState,
             ...localState,
+            ...serverState,
             transactions: mergedTxns,
-            accounts: serverState.accounts?.length ? serverState.accounts : localState.accounts,
-            categories: serverState.categories?.length ? serverState.categories : localState.categories,
-            budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : localState.budgetGoals,
-            recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : localState.recurringTransactions,
-            debts: serverState.debts?.length ? serverState.debts : localState.debts,
-            savingsGoals: serverState.savingsGoals?.length ? serverState.savingsGoals : localState.savingsGoals,
+            accounts: mergedAccounts.length ? mergedAccounts : DEFAULT_ACCOUNTS,
+            categories: mergedCategories.length ? mergedCategories : DEFAULT_CATEGORIES,
+            budgetGoals: mergedBudgets,
+            recurringTransactions: mergedRecurring,
+            debts: (serverState.debts?.length ? serverState.debts : localState.debts) || [],
+            savingsGoals: (serverState.savingsGoals?.length ? serverState.savingsGoals : localState.savingsGoals) || [],
           };
 
           writeLocalState(mergedState);

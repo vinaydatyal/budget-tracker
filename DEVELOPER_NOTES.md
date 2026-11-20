@@ -172,6 +172,22 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Signature-Based Deduplication & Cumulative Preservation:** Updated both `mcpTools.ts` and `mcp-server/index.mjs` to deduplicate by transaction signature (`date_amount_description`) and append incoming batches onto the full existing transaction history.
   - **Real-Time Cumulative Progress Reporting:** The MCP tool now returns `Cumulative Total in Ledger: X rows` on every batch write, providing instant verification of progressive row accumulation (e.g. 140 -> 280 -> 1,244).
   - **Cloud Firestore Shared State Engine (`serverStorage.ts`):** Upgraded `readServerState` and `writeServerState` to persist directly to Cloud Firestore (`shared/budget_app_state`), eliminating container-isolated `/tmp` wiping across serverless instances.
+- **Phase 17 (Durability Shield & Refresh Deletion Root-Cause Elimination):**
+  - **The Vicious Cycle Identified:**
+    1. Ephemeral Vercel containers recycle every 5-15 minutes, wiping `/tmp/app_state.json`.
+    2. When a user opens or refreshes the page, `AppContext` initialized with `DEFAULT_STATE` (0 transactions).
+    3. If local storage had no cache or guest storage was reset, the debounced sync fired after 1500ms because `(!user || state.transactions.length > 0)` evaluated to `true` whenever `user` was `null` (guest).
+    4. This sent an empty payload (`transactions: []`) to `/api/sync`, where `merge: true` spread the empty state over the server, permanently clobbering any loaded transactions.
+    5. Additionally, `AppContext` contained `if (previousUserUidRef.current) { saved = DEFAULT_STATE; saveState(DEFAULT_STATE, 'guest'); }`, which aggressively wiped guest storage upon any auth state change or refresh.
+    6. Magic link auth in `AuthContext` threw an uncaught `auth/invalid-action-code` toast on React StrictMode double mounts, causing users to believe authentication failed and remain in vulnerable guest mode.
+  - **The Durability Shield Implemented:**
+    1. **Client-Side Empty POST Ban (`AppContext.tsx`):** Changed debounced sync condition to strictly `if (state.transactions.length > 0)`. The client is now strictly forbidden from sending an empty payload to `/api/sync`.
+    2. **Server-Side Empty Write Barrier (`serverStorage.ts` & `/api/sync/route.ts`):** If an incoming sync or write payload contains 0 transactions while storage already holds > 0 transactions, the write is immediately rejected and existing server data is preserved.
+    3. **Spread-Order Protection:** Swapped spread precedence in `/api/sync` so server custom fields, categories, and accounts cannot be overwritten by default scaffold values.
+    4. **Guest Storage Shield:** Removed the unauthenticated guest wipe on auth change in `AppContext.tsx`. Guest mode now retains its cached state and non-destructively merges with `/api/sync`.
+    5. **Magic Link Tolerance (`AuthContext.tsx`):** Handled duplicate action codes gracefully, suppressing spurious error alerts on double mounts.
+    6. **Shared State Bootstrapping (`firestoreSync.ts`):** In `initOrLoadUser`, if a user logs in and their cloud profile has 0 transactions, SolV automatically bootstraps and seeds their private cloud vault from `shared/budget_app_state`.
+    7. **Probe Restored & Verified:** PROBE-A (₹11,111) and PROBE-B (₹22,222) verified in Cloud Firestore `shared/budget_app_state` and local storage.
 
 ## 9. Where to Find Things
 

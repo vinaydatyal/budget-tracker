@@ -570,43 +570,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         // Guest mode (unauthenticated)
-        // If a user just signed out, start with clean DEFAULT_STATE
-        if (previousUserUidRef.current) {
-          saved = DEFAULT_STATE;
-          saveState(DEFAULT_STATE, 'guest');
-        } else {
-          saved = loadState('guest');
-          
-          // Optionally sync with Server/MCP storage in guest mode
-          try {
-            const syncRes = await fetch('/api/sync');
-            if (syncRes.ok) {
-              const syncData = await syncRes.json();
-              const serverState: AppState = syncData.state;
-              if (serverState) {
-                const localTxnIds = new Set((saved.transactions || []).map(t => t.id));
-                const serverTxns = serverState.transactions || [];
-                const hasNewServerTxns = serverTxns.some(t => !localTxnIds.has(t.id));
+        saved = loadState('guest');
+        
+        // Always sync with Server/MCP / Cloud storage in guest mode
+        try {
+          const syncRes = await fetch('/api/sync');
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            const serverState: AppState = syncData.state;
+            if (serverState) {
+              const localTxnIds = new Set((saved.transactions || []).map(t => t.id));
+              const serverTxns = serverState.transactions || [];
+              const hasNewServerTxns = serverTxns.some(t => !localTxnIds.has(t.id));
 
-                if (hasNewServerTxns || (saved.transactions.length === 0 && serverTxns.length > 0)) {
-                  const mergedTxns = [...saved.transactions];
-                  serverTxns.forEach(t => {
-                    if (!localTxnIds.has(t.id)) {
-                      mergedTxns.push(t);
-                      localTxnIds.add(t.id);
-                    }
-                  });
-                  saved = {
-                    ...saved,
-                    ...serverState,
-                    transactions: mergedTxns
-                  };
-                }
+              if (hasNewServerTxns || (saved.transactions.length === 0 && serverTxns.length > 0)) {
+                const mergedTxns = [...saved.transactions];
+                serverTxns.forEach(t => {
+                  if (!localTxnIds.has(t.id)) {
+                    mergedTxns.push(t);
+                    localTxnIds.add(t.id);
+                  }
+                });
+                saved = {
+                  ...saved,
+                  ...serverState,
+                  transactions: mergedTxns,
+                  accounts: serverState.accounts?.length ? serverState.accounts : saved.accounts,
+                  categories: serverState.categories?.length ? serverState.categories : saved.categories,
+                  budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : saved.budgetGoals,
+                  recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : saved.recurringTransactions,
+                  preferences: (serverState.preferences?.hasCompletedOnboarding || saved.preferences?.hasCompletedOnboarding)
+                    ? { ...saved.preferences, ...serverState.preferences, hasCompletedOnboarding: true }
+                    : saved.preferences,
+                };
               }
             }
-          } catch {
-            // Offline
           }
+        } catch {
+          // Offline
         }
       }
 
@@ -695,8 +696,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Debounced sync to Server / MCP storage (guest or local MCP)
-    // Only sync if in guest mode or if authenticated state has actual content to prevent clobbering MCP data
-    if (!user || state.transactions.length > 0) {
+    // ONLY sync if state has actual transactions to NEVER clobber server data with empty default scaffold!
+    if (state.transactions.length > 0) {
       const serverSyncTimer = setTimeout(() => {
         fetch('/api/sync', {
           method: 'POST',
@@ -716,13 +717,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) return;
         const data = await res.json();
         const serverState: AppState = data.state;
-        if (!serverState || !serverState.transactions) return;
+        if (!serverState || !serverState.transactions || serverState.transactions.length === 0) return;
 
         const currentTxnIds = new Set(state.transactions.map(t => t.id));
         const newTxns = serverState.transactions.filter(t => !currentTxnIds.has(t.id));
 
         if (newTxns.length > 0) {
-          dispatch({ type: 'LOAD_STATE', payload: serverState });
+          const merged: AppState = {
+            ...state,
+            ...serverState,
+            transactions: [...newTxns, ...state.transactions],
+            accounts: serverState.accounts?.length ? serverState.accounts : state.accounts,
+            categories: serverState.categories?.length ? serverState.categories : state.categories,
+            budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : state.budgetGoals,
+            recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : state.recurringTransactions,
+          };
+          dispatch({ type: 'LOAD_STATE', payload: merged });
+          saveState(merged, user ? user.uid : 'guest');
           toast.success(`✨ Synced ${newTxns.length} new transaction(s) from Claude!`, { id: 'mcp-sync-toast' });
         }
       } catch (err) {

@@ -160,8 +160,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       toast.success('Signed in successfully via email link!', { icon: '🎉' });
     } catch (error: any) {
-      // If code was already consumed but user is already signed in, ignore benign duplicate error
-      if (error?.code === 'auth/invalid-action-code' && (auth.currentUser || user)) {
+      // If code was already consumed (e.g. React 18 strict mode double-mount or duplicate click), ignore gracefully
+      if (error?.code === 'auth/invalid-action-code') {
+        console.warn('Action code already consumed or invalid; ignoring duplicate error.');
         return;
       }
       console.error('Error signing in with email link', error);

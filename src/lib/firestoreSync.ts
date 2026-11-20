@@ -24,6 +24,18 @@ export async function initOrLoadUser(user: User, localFallbackState?: AppState):
 
     const hasLocalTransactions = localFallbackState && localFallbackState.transactions && localFallbackState.transactions.length > 0;
 
+    // Check if shared state has transactions to bootstrap from
+    let sharedCandidate: AppState | null = null;
+    try {
+      const sharedSnap = await getDoc(doc(db, 'shared', 'budget_app_state'));
+      if (sharedSnap.exists()) {
+        const sharedData = sharedSnap.data();
+        if (sharedData?.state && Array.isArray(sharedData.state.transactions) && sharedData.state.transactions.length > 0) {
+          sharedCandidate = sharedData.state;
+        }
+      }
+    } catch {}
+
     if (snap.exists()) {
       const data = snap.data();
       // Update last active metadata for returning user
@@ -65,11 +77,23 @@ export async function initOrLoadUser(user: User, localFallbackState?: AppState):
         return { state: localFallbackState, isNewUser: false };
       }
 
+      // If cloud has 0 transactions and local is empty, seed from shared state if available
+      if (sharedCandidate && sharedCandidate.transactions && sharedCandidate.transactions.length > 0) {
+        await setDoc(userDocRef, {
+          state: sharedCandidate,
+          updatedAt: Date.now()
+        }, { merge: true });
+        console.log(`[Firebase] Seeded ${sharedCandidate.transactions.length} shared transactions to returning cloud user: ${user.uid}`);
+        return { state: sharedCandidate, isNewUser: false };
+      }
+
       return { state: DEFAULT_STATE, isNewUser: false };
     } else {
       // BRAND NEW USER IN FIREBASE!
       // If user had local data before signing in, migrate it rather than wiping with DEFAULT_STATE!
-      const initialCandidate = (hasLocalTransactions && localFallbackState) ? localFallbackState : DEFAULT_STATE;
+      const initialCandidate = (hasLocalTransactions && localFallbackState) 
+        ? localFallbackState 
+        : ((sharedCandidate && sharedCandidate.transactions && sharedCandidate.transactions.length > 0) ? sharedCandidate : DEFAULT_STATE);
 
       const initialUserData = {
         uid: user.uid,

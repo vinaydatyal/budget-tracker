@@ -105,12 +105,12 @@ export async function readServerState(): Promise<AppState> {
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const data = snap.data();
-        if (data && data.state) {
+        if (data && data.state && Array.isArray(data.state.transactions)) {
           return sanitizeState(data.state);
         }
       }
     } catch (err) {
-      // Cloud Firestore read fallback
+      console.warn('[ServerStorage] Cloud Firestore read error:', err);
     }
   }
 
@@ -154,6 +154,18 @@ export async function readServerState(): Promise<AppState> {
 }
 
 export async function writeServerState(state: AppState): Promise<void> {
+  // Safety guard: If incoming state has 0 transactions, verify existing storage first.
+  // NEVER allow an empty state to overwrite an existing populated dataset!
+  if (!state.transactions || state.transactions.length === 0) {
+    try {
+      const current = await readServerState();
+      if (current.transactions && current.transactions.length > 0) {
+        console.warn(`[ServerStorage] Blocked write: incoming state has 0 transactions while storage holds ${current.transactions.length} rows.`);
+        return;
+      }
+    } catch {}
+  }
+
   // 1. Primary Cloud Persistence: Cloud Firestore shared vault
   if (db) {
     try {
@@ -163,7 +175,7 @@ export async function writeServerState(state: AppState): Promise<void> {
         updatedAt: Date.now()
       }, { merge: true });
     } catch (err) {
-      // Cloud Firestore write fallback
+      console.warn('[ServerStorage] Cloud Firestore write error:', err);
     }
   }
 

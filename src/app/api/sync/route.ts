@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readServerState, writeServerState } from '@/lib/serverStorage';
 import { AppState, Transaction } from '@/lib/types';
+import { DEFAULT_STATE } from '@/lib/storage';
 
 export async function GET() {
   try {
@@ -21,14 +22,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'No state provided' }, { status: 400 });
     }
 
+    const current = await readServerState();
+    const incomingTxnsCount = incomingState.transactions?.length || 0;
+    const currentTxnsCount = current.transactions?.length || 0;
+
+    // Safety guard: If incoming state is empty/zero transactions, NEVER wipe existing server data
+    if (incomingTxnsCount === 0 && currentTxnsCount > 0) {
+      return NextResponse.json({
+        success: true,
+        state: current,
+        message: 'Preserved existing cloud dataset against empty payload'
+      });
+    }
+
     if (!merge) {
       await writeServerState(incomingState);
       return NextResponse.json({ success: true, state: incomingState });
     }
 
     // Merge logic
-    const current = await readServerState();
-
     // 1. Transactions: Union by ID
     const existingTxnIds = new Set((current.transactions || []).map(t => t.id));
     const mergedTxns: Transaction[] = [...(current.transactions || [])];
@@ -107,8 +119,9 @@ export async function POST(req: Request) {
     });
 
     const mergedState: AppState = {
-      ...current,
+      ...DEFAULT_STATE,
       ...incomingState,
+      ...current,
       transactions: mergedTxns,
       accounts: mergedAccounts.length > 0 ? mergedAccounts : current.accounts,
       categories: mergedCategories.length > 0 ? mergedCategories : current.categories,
@@ -116,6 +129,8 @@ export async function POST(req: Request) {
       recurringTransactions: mergedRecurring.length > 0 ? mergedRecurring : current.recurringTransactions,
       debts: mergedDebts.length > 0 ? mergedDebts : current.debts,
       savingsGoals: mergedSavings.length > 0 ? mergedSavings : current.savingsGoals,
+      preferences: incomingState.preferences?.hasCompletedOnboarding ? incomingState.preferences : (current.preferences || incomingState.preferences),
+      currency: (current.currency && current.currency !== 'USD') ? current.currency : (incomingState.currency || current.currency || 'USD'),
     };
 
     await writeServerState(mergedState);

@@ -1,4 +1,4 @@
-import { AppState, Transaction, Account, Category } from './types';
+import { AppState, Transaction, Account, Category, LedgerEntry } from './types';
 import { readServerState, writeServerState, resolveAccount, resolveCategory, generateLedgerEntries } from './serverStorage';
 
 export function uid(prefix = 'id'): string {
@@ -441,7 +441,7 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
         isBusiness: args.isBusiness ?? account.isBusiness ?? false
       };
 
-      state.transactions.unshift(txn);
+      state.transactions = [txn, ...(state.transactions || [])];
       if (txn.isBusiness) {
         state.ledger = [...(state.ledger || []), ...generateLedgerEntries(txn, state.accounts)];
       }
@@ -451,6 +451,7 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       const updatedAcc = balances.find(a => a.id === account.id);
 
       return `✅ Added ${txn.type.toUpperCase()} of ${formatMoney(args.amount, state.currency)}: "${args.description}"\n` +
+             `• Total in ledger: ${state.transactions.length} rows\n` +
              `• Category: ${category.name} ${category.icon || ''}\n` +
              `• Account: ${account.name} (New balance: ${formatMoney(updatedAcc?.balance || 0, state.currency)})\n` +
              `• Date: ${dateStr.slice(0, 10)}\n` +
@@ -463,6 +464,13 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       let totalIncome = 0;
       let totalExpense = 0;
 
+      const existingSignatures = new Set((state.transactions || []).map(t =>
+        `${t.date?.slice(0, 10)}_${t.amount}_${(t.description || '').trim().toLowerCase()}`
+      ));
+
+      const newTxns: Transaction[] = [];
+      const newLedgerEntries: LedgerEntry[] = [];
+
       for (const item of list) {
         const account = resolveAccount(state.accounts, item.account);
         const toAccount = item.toAccount ? resolveAccount(state.accounts, item.toAccount) : undefined;
@@ -474,32 +482,42 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
           if (!isNaN(d.getTime())) dateStr = d.toISOString();
         }
 
-        const txn: Transaction = {
-          id: uid('txn'),
-          type: item.type || 'expense',
-          amount: item.amount,
-          accountId: account.id,
-          toAccountId: toAccount?.id,
-          categoryId: category.id,
-          description: item.description,
-          date: dateStr,
-          payee: item.payee,
-          notes: item.notes,
-          tags: item.tags || [],
-          isBusiness: item.isBusiness ?? account.isBusiness ?? false
-        };
+        const sig = `${dateStr.slice(0, 10)}_${item.amount}_${(item.description || '').trim().toLowerCase()}`;
+        if (!existingSignatures.has(sig)) {
+          const txn: Transaction = {
+            id: uid('txn'),
+            type: item.type || 'expense',
+            amount: item.amount,
+            accountId: account.id,
+            toAccountId: toAccount?.id,
+            categoryId: category.id,
+            description: item.description,
+            date: dateStr,
+            payee: item.payee,
+            notes: item.notes,
+            tags: item.tags || [],
+            isBusiness: item.isBusiness ?? account.isBusiness ?? false
+          };
 
-        if (txn.type === 'income') totalIncome += txn.amount;
-        if (txn.type === 'expense') totalExpense += txn.amount;
+          if (txn.type === 'income') totalIncome += txn.amount;
+          if (txn.type === 'expense') totalExpense += txn.amount;
 
-        state.transactions.unshift(txn);
-        if (txn.isBusiness) {
-          state.ledger = [...(state.ledger || []), ...generateLedgerEntries(txn, state.accounts)];
+          newTxns.push(txn);
+          existingSignatures.add(sig);
+
+          if (txn.isBusiness) {
+            newLedgerEntries.push(...generateLedgerEntries(txn, state.accounts));
+          }
         }
       }
 
+      state.transactions = [...newTxns, ...(state.transactions || [])];
+      if (newLedgerEntries.length > 0) {
+        state.ledger = [...(state.ledger || []), ...newLedgerEntries];
+      }
+
       await writeServerState(state);
-      return `✅ Successfully added ${list.length} transaction(s) in bulk!\n` +
+      return `✅ Successfully added ${newTxns.length} new transaction(s) in bulk! Cumulative Total in Ledger: ${state.transactions.length} rows\n` +
              `• Total Income Added: ${formatMoney(totalIncome, state.currency)}\n` +
              `• Total Expenses Added: ${formatMoney(totalExpense, state.currency)}`;
     }

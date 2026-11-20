@@ -167,6 +167,11 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
 - **Phase 15 (Safe Local Storage Fallback & Login Data Migration Engine):**
   - **First-Time Sign-In Data Preservation (`initOrLoadUser` in `firestoreSync.ts`):** Resolved the flaw where a newly authenticated Firebase user was unconditionally seeded with `DEFAULT_STATE`. `initOrLoadUser` now accepts `localFallbackState`; if the cloud profile is new or has 0 transactions, it migrates pre-existing local transactions directly into the user's Firestore vault (`users/{uid}`) instead of wiping them.
   - **Cascading Local Storage Key Recovery (`storage.ts`):** `loadState(userId)` now inspects `budget_tracker_state_${userId}`, `budget_tracker_state_guest`, and legacy `budget_tracker_state`. If the user-specific storage key is empty, it recovers rich data from guest/legacy keys to prevent accidental data loss during guest-to-authenticated transitions.
+- **Phase 16 (Multi-Batch Cumulative Ledger Retention & Cloud Firestore Shared Storage):**
+  - **The Root Cause:** In `mcpTools.ts` and `mcp-server/index.mjs`, `add_transactions_bulk` was unshifting incoming transactions into the in-memory state of whatever ephemeral serverless container received the request, without deduplicating or verifying cumulative retention against a shared database. As a result, subsequent batches overwrote previous batches whenever a new lambda container spun up, leaving only Batch 9 (121 transactions).
+  - **Signature-Based Deduplication & Cumulative Preservation:** Updated both `mcpTools.ts` and `mcp-server/index.mjs` to deduplicate by transaction signature (`date_amount_description`) and append incoming batches onto the full existing transaction history.
+  - **Real-Time Cumulative Progress Reporting:** The MCP tool now returns `Cumulative Total in Ledger: X rows` on every batch write, providing instant verification of progressive row accumulation (e.g. 140 -> 280 -> 1,244).
+  - **Cloud Firestore Shared State Engine (`serverStorage.ts`):** Upgraded `readServerState` and `writeServerState` to persist directly to Cloud Firestore (`shared/budget_app_state`), eliminating container-isolated `/tmp` wiping across serverless instances.
 
 ## 9. Where to Find Things
 

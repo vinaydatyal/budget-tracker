@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { AppState, Transaction, Account, Category, BudgetGoal, RecurringTransaction, Debt, SavingsGoal, LedgerEntry } from './types';
 import { DEFAULT_STATE, DEFAULT_ACCOUNTS, DEFAULT_CATEGORIES } from './storage';
+import { db } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export function getDataFilePath(): string {
   if (process.env.BUDGET_DATA_PATH) {
@@ -96,6 +98,23 @@ function sanitizeState(parsed: any): AppState {
 }
 
 export async function readServerState(): Promise<AppState> {
+  // 1. Primary Cloud Persistence: Cloud Firestore shared vault
+  if (db) {
+    try {
+      const docRef = doc(db, 'shared', 'budget_app_state');
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && data.state) {
+          return sanitizeState(data.state);
+        }
+      }
+    } catch (err) {
+      // Cloud Firestore read fallback
+    }
+  }
+
+  // 2. Secondary: Redis / Upstash KV
   const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
   const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -117,6 +136,7 @@ export async function readServerState(): Promise<AppState> {
     }
   }
 
+  // 3. Fallback: local or ephemeral /tmp file
   const filePath = getDataFilePath();
   try {
     if (!fs.existsSync(filePath)) {
@@ -134,6 +154,20 @@ export async function readServerState(): Promise<AppState> {
 }
 
 export async function writeServerState(state: AppState): Promise<void> {
+  // 1. Primary Cloud Persistence: Cloud Firestore shared vault
+  if (db) {
+    try {
+      const docRef = doc(db, 'shared', 'budget_app_state');
+      await setDoc(docRef, {
+        state,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (err) {
+      // Cloud Firestore write fallback
+    }
+  }
+
+  // 2. Secondary: Redis / Upstash KV
   const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
   const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -152,6 +186,7 @@ export async function writeServerState(state: AppState): Promise<void> {
     }
   }
 
+  // 3. Fallback: local or ephemeral /tmp file
   try {
     const filePath = getDataFilePath();
     const dir = path.dirname(filePath);

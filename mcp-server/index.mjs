@@ -469,6 +469,13 @@ server.tool(
     let totalExpense = 0;
     const addedList = [];
 
+    const existingSignatures = new Set((state.transactions || []).map(t =>
+      `${t.date?.slice(0, 10)}_${t.amount}_${(t.description || '').trim().toLowerCase()}`
+    ));
+
+    const newTxns = [];
+    const newLedgerEntries = [];
+
     for (const item of transactions) {
       const account = resolveAccount(state.accounts, item.account);
       const toAccount = item.toAccount ? resolveAccount(state.accounts, item.toAccount) : undefined;
@@ -480,31 +487,40 @@ server.tool(
         if (!isNaN(d.getTime())) dateStr = d.toISOString();
       }
 
-      const txn = {
-        id: uid('txn'),
-        type: item.type,
-        amount: item.amount,
-        accountId: account.id,
-        toAccountId: toAccount?.id,
-        categoryId: category.id,
-        description: item.description,
-        date: dateStr,
-        payee: item.payee,
-        notes: item.notes,
-        tags: item.tags || [],
-        isBusiness: item.isBusiness ?? account.isBusiness ?? false
-      };
+      const sig = `${dateStr.slice(0, 10)}_${item.amount}_${(item.description || '').trim().toLowerCase()}`;
+      if (!existingSignatures.has(sig)) {
+        const txn = {
+          id: uid('txn'),
+          type: item.type,
+          amount: item.amount,
+          accountId: account.id,
+          toAccountId: toAccount?.id,
+          categoryId: category.id,
+          description: item.description,
+          date: dateStr,
+          payee: item.payee,
+          notes: item.notes,
+          tags: item.tags || [],
+          isBusiness: item.isBusiness ?? account.isBusiness ?? false
+        };
 
-      if (item.type === 'income') totalIncome += item.amount;
-      if (item.type === 'expense') totalExpense += item.amount;
+        if (item.type === 'income') totalIncome += item.amount;
+        if (item.type === 'expense') totalExpense += item.amount;
 
-      state.transactions.unshift(txn);
-      if (txn.isBusiness) {
-        const newEntries = generateLedgerEntries(txn, state.accounts);
-        state.ledger = [...(state.ledger || []), ...newEntries];
+        newTxns.push(txn);
+        existingSignatures.add(sig);
+
+        if (txn.isBusiness) {
+          newLedgerEntries.push(...generateLedgerEntries(txn, state.accounts));
+        }
+
+        addedList.push(`${dateStr.slice(0, 10)} | ${item.type.toUpperCase()} | ${formatMoney(item.amount, state.currency)} | ${item.description} (${category.name})`);
       }
+    }
 
-      addedList.push(`${dateStr.slice(0, 10)} | ${item.type.toUpperCase()} | ${formatMoney(item.amount, state.currency)} | ${item.description} (${category.name})`);
+    state.transactions = [...newTxns, ...(state.transactions || [])];
+    if (newLedgerEntries.length > 0) {
+      state.ledger = [...(state.ledger || []), ...newLedgerEntries];
     }
 
     await writeState(state);
@@ -513,7 +529,7 @@ server.tool(
       content: [
         {
           type: 'text',
-          text: `✅ Successfully added ${transactions.length} transaction(s) in bulk!\n` +
+          text: `✅ Successfully added ${newTxns.length} new transaction(s) in bulk! Cumulative Total in Ledger: ${state.transactions.length} rows\n` +
                 `• Total Income Added: ${formatMoney(totalIncome, state.currency)}\n` +
                 `• Total Expenses Added: ${formatMoney(totalExpense, state.currency)}\n\n` +
                 `Summary of imported transactions:\n` +

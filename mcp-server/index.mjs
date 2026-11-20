@@ -122,88 +122,31 @@ function writeLocalState(state) {
   }
 }
 
+function makeTransactionSignature(t) {
+  const date = (t.date || '').slice(0, 10);
+  const type = (t.type || 'expense').toLowerCase();
+  const amount = Number(t.amount || 0).toFixed(2);
+  const payee = (t.payee || '').trim().toLowerCase();
+  const desc = (t.description || '').trim().toLowerCase();
+  const acc = (t.accountId || t.account || '').trim().toLowerCase();
+  return `${date}|${type}|${amount}|${payee}|${desc}|${acc}`;
+}
+
 async function readState() {
   const localState = readLocalState();
   if (APP_URL) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       const res = await fetch(`${APP_URL}/api/sync`, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         if (data && data.state) {
           const serverState = data.state;
-          const localTxnIds = new Set((localState.transactions || []).map(t => t.id));
-          const serverTxns = serverState.transactions || [];
-          const mergedTxns = [...(localState.transactions || [])];
-
-          serverTxns.forEach(t => {
-            if (!localTxnIds.has(t.id)) {
-              mergedTxns.push(t);
-              localTxnIds.add(t.id);
-            }
-          });
-
-          // Non-destructive union merge for accounts
-          const mergedAccounts = [...(localState.accounts || [])];
-          const accKey = (a) => `${a.id || ''}:${(a.name || '').trim().toLowerCase()}`;
-          const seenAccounts = new Set(mergedAccounts.map(accKey));
-          (serverState.accounts || []).forEach(a => {
-            const k = accKey(a);
-            if (!seenAccounts.has(k)) {
-              mergedAccounts.push(a);
-              seenAccounts.add(k);
-            }
-          });
-
-          // Non-destructive union merge for categories
-          const mergedCategories = [...(localState.categories || [])];
-          const catKey = (c) => `${c.id || ''}:${(c.name || '').trim().toLowerCase()}`;
-          const seenCategories = new Set(mergedCategories.map(catKey));
-          (serverState.categories || []).forEach(c => {
-            const k = catKey(c);
-            if (!seenCategories.has(k)) {
-              mergedCategories.push(c);
-              seenCategories.add(k);
-            }
-          });
-
-          // Non-destructive union merge for budgets
-          const mergedBudgets = [...(localState.budgetGoals || [])];
-          const seenBudgets = new Set(mergedBudgets.map(b => b.id));
-          (serverState.budgetGoals || []).forEach(b => {
-            if (!seenBudgets.has(b.id)) {
-              mergedBudgets.push(b);
-              seenBudgets.add(b.id);
-            }
-          });
-
-          // Non-destructive union merge for recurring
-          const mergedRecurring = [...(localState.recurringTransactions || [])];
-          const seenRecurring = new Set(mergedRecurring.map(r => r.id));
-          (serverState.recurringTransactions || []).forEach(r => {
-            if (!seenRecurring.has(r.id)) {
-              mergedRecurring.push(r);
-              seenRecurring.add(r.id);
-            }
-          });
-
-          const mergedState = {
-            ...DEFAULT_STATE,
-            ...localState,
-            ...serverState,
-            transactions: mergedTxns,
-            accounts: mergedAccounts.length ? mergedAccounts : DEFAULT_ACCOUNTS,
-            categories: mergedCategories.length ? mergedCategories : DEFAULT_CATEGORIES,
-            budgetGoals: mergedBudgets,
-            recurringTransactions: mergedRecurring,
-            debts: (serverState.debts?.length ? serverState.debts : localState.debts) || [],
-            savingsGoals: (serverState.savingsGoals?.length ? serverState.savingsGoals : localState.savingsGoals) || [],
-          };
-
-          writeLocalState(mergedState);
-          return sanitizeState(mergedState);
+          // Synchronize local disk with authoritative cloud state
+          writeLocalState(serverState);
+          return sanitizeState(serverState);
         }
       }
     } catch (err) {
@@ -213,23 +156,37 @@ async function readState() {
   return localState;
 }
 
-async function writeState(state) {
+async function writeState(state, options = {}) {
   writeLocalState(state);
   if (APP_URL) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-      await fetch(`${APP_URL}/api/sync`, {
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(`${APP_URL}/api/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ state, merge: true })
+        body: JSON.stringify({
+          state,
+          merge: options.merge ?? true,
+          allowEmpty: options.allowEmpty ?? false
+        })
       });
       clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.state) {
+          writeLocalState(data.state);
+          return data.state;
+        }
+      } else {
+        console.error(`[MCP] writeState remote sync failed: HTTP ${res.status}`);
+      }
     } catch (err) {
-      // Offline fallback
+      console.warn('[MCP] writeState remote sync offline/timeout:', err.message);
     }
   }
+  return state;
 }
 
 function uid(prefix = 'id') {
@@ -445,6 +402,8 @@ server.tool(
   {
     transactions: z.array(
       z.object({
+        id: z.string().optional().describe('Optional unique bank or statement reference ID'),
+        reference: z.string().optional().describe('Alternative transaction reference number'),
         amount: z.number().positive(),
         type: z.enum(['expense', 'income', 'transfer']).default('expense'),
         description: z.string(),
@@ -468,15 +427,21 @@ server.tool(
     let totalIncome = 0;
     let totalExpense = 0;
     const addedList = [];
+    const skippedList = [];
 
-    const existingSignatures = new Set((state.transactions || []).map(t =>
-      `${t.date?.slice(0, 10)}_${t.amount}_${(t.description || '').trim().toLowerCase()}`
-    ));
+    const existingTxnIds = new Set((state.transactions || []).map(t => t.id));
+    const existingSignatures = new Set((state.transactions || []).map(t => makeTransactionSignature(t)));
 
     const newTxns = [];
     const newLedgerEntries = [];
 
     for (const item of transactions) {
+      const explicitId = item.id || item.reference;
+      if (explicitId && existingTxnIds.has(explicitId)) {
+        skippedList.push(`Skipped duplicate ID: ${explicitId} ("${item.description}")`);
+        continue;
+      }
+
       const account = resolveAccount(state.accounts, item.account);
       const toAccount = item.toAccount ? resolveAccount(state.accounts, item.toAccount) : undefined;
       const category = resolveCategory(state.categories, item.category, item.type);
@@ -487,35 +452,48 @@ server.tool(
         if (!isNaN(d.getTime())) dateStr = d.toISOString();
       }
 
-      const sig = `${dateStr.slice(0, 10)}_${item.amount}_${(item.description || '').trim().toLowerCase()}`;
-      if (!existingSignatures.has(sig)) {
-        const txn = {
-          id: uid('txn'),
-          type: item.type,
-          amount: item.amount,
-          accountId: account.id,
-          toAccountId: toAccount?.id,
-          categoryId: category.id,
-          description: item.description,
-          date: dateStr,
-          payee: item.payee,
-          notes: item.notes,
-          tags: item.tags || [],
-          isBusiness: item.isBusiness ?? account.isBusiness ?? false
-        };
+      const sig = makeTransactionSignature({
+        date: dateStr,
+        type: item.type,
+        amount: item.amount,
+        payee: item.payee,
+        description: item.description,
+        accountId: account.id
+      });
 
-        if (item.type === 'income') totalIncome += item.amount;
-        if (item.type === 'expense') totalExpense += item.amount;
-
-        newTxns.push(txn);
-        existingSignatures.add(sig);
-
-        if (txn.isBusiness) {
-          newLedgerEntries.push(...generateLedgerEntries(txn, state.accounts));
-        }
-
-        addedList.push(`${dateStr.slice(0, 10)} | ${item.type.toUpperCase()} | ${formatMoney(item.amount, state.currency)} | ${item.description} (${category.name})`);
+      if (existingSignatures.has(sig)) {
+        skippedList.push(`Skipped duplicate entry: ${dateStr.slice(0, 10)} | ${formatMoney(item.amount, state.currency)} | ${item.payee ? item.payee + ' - ' : ''}"${item.description}"`);
+        continue;
       }
+
+      const txnId = explicitId || uid('txn');
+      const txn = {
+        id: txnId,
+        type: item.type,
+        amount: item.amount,
+        accountId: account.id,
+        toAccountId: toAccount?.id,
+        categoryId: category.id,
+        description: item.description,
+        date: dateStr,
+        payee: item.payee,
+        notes: item.notes,
+        tags: item.tags || [],
+        isBusiness: item.isBusiness ?? account.isBusiness ?? false
+      };
+
+      if (item.type === 'income') totalIncome += item.amount;
+      if (item.type === 'expense') totalExpense += item.amount;
+
+      newTxns.push(txn);
+      existingSignatures.add(sig);
+      existingTxnIds.add(txnId);
+
+      if (txn.isBusiness) {
+        newLedgerEntries.push(...generateLedgerEntries(txn, state.accounts));
+      }
+
+      addedList.push(`${dateStr.slice(0, 10)} | ${item.type.toUpperCase()} | ${formatMoney(item.amount, state.currency)} | ${item.payee ? item.payee + ' - ' : ''}${item.description} (${category.name})`);
     }
 
     state.transactions = [...newTxns, ...(state.transactions || [])];
@@ -523,18 +501,24 @@ server.tool(
       state.ledger = [...(state.ledger || []), ...newLedgerEntries];
     }
 
-    await writeState(state);
+    const confirmedState = await writeState(state);
 
     return {
       content: [
         {
           type: 'text',
-          text: `✅ Successfully added ${newTxns.length} new transaction(s) in bulk! Cumulative Total in Ledger: ${state.transactions.length} rows\n` +
+          text: `✅ Batch Write Processed:\n` +
+                `• Successfully Added: ${newTxns.length} transaction(s)\n` +
+                (skippedList.length > 0 ? `• Duplicates Skipped: ${skippedList.length} transaction(s)\n` : '') +
+                `• Verified Total in Ledger: ${confirmedState.transactions.length} rows\n` +
                 `• Total Income Added: ${formatMoney(totalIncome, state.currency)}\n` +
                 `• Total Expenses Added: ${formatMoney(totalExpense, state.currency)}\n\n` +
-                `Summary of imported transactions:\n` +
+                (newTxns.length > 0 ? `Summary of newly added transactions:\n` +
                 addedList.slice(0, 20).map(l => `• ${l}`).join('\n') +
-                (addedList.length > 20 ? `\n• ...and ${addedList.length - 20} more.` : '')
+                (addedList.length > 20 ? `\n• ...and ${addedList.length - 20} more.\n` : '\n') : '') +
+                (skippedList.length > 0 ? `\nDuplicates detected & skipped:\n` +
+                skippedList.slice(0, 10).map(s => `• ${s}`).join('\n') +
+                (skippedList.length > 10 ? `\n• ...and ${skippedList.length - 10} more.` : '') : '')
         }
       ]
     };
@@ -700,7 +684,7 @@ server.tool(
 
     // Rollback linked debt
     if (txn.linkedDebtId) {
-      state.debts = state.debts.map(d => {
+      state.debts = (state.debts || []).map(d => {
         if (d.id !== txn.linkedDebtId) return d;
         return {
           ...d,
@@ -711,7 +695,7 @@ server.tool(
 
     // Rollback linked savings goal
     if (txn.linkedSavingsGoalId) {
-      state.savingsGoals = state.savingsGoals.map(sg => {
+      state.savingsGoals = (state.savingsGoals || []).map(sg => {
         if (sg.id !== txn.linkedSavingsGoalId) return sg;
         return {
           ...sg,
@@ -723,13 +707,44 @@ server.tool(
     state.transactions = state.transactions.filter(t => t.id !== id);
     state.ledger = (state.ledger || []).filter(l => l.transactionId !== id);
 
-    await writeState(state);
+    // 1. Delete on remote server first via explicit DELETE endpoint
+    if (APP_URL) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        await fetch(`${APP_URL}/api/sync?id=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+      } catch (err) {
+        console.warn('[MCP] Remote delete endpoint error:', err.message);
+      }
+    }
+
+    // 2. Persist locally and with allowEmpty: true
+    const confirmed = await writeState(state, { allowEmpty: true, merge: false });
+
+    // 3. Verify deletion against storage
+    const verified = await readState();
+    const stillPresent = (verified.transactions || []).some(t => t.id === id);
+    if (stillPresent) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `⚠️ Deletion Warning: Transaction "${id}" was deleted in local session but failed to clear from remote storage. Ledger count: ${verified.transactions.length} rows.`
+          }
+        ]
+      };
+    }
 
     return {
       content: [
         {
           type: 'text',
-          text: `🗑️ Deleted transaction "${txn.description}" (${formatMoney(txn.amount, state.currency)}).`
+          text: `🗑️ Successfully deleted transaction "${txn.description}" (${formatMoney(txn.amount, state.currency)}).\n` +
+                `• Verified remaining in ledger: ${verified.transactions.length} rows.`
         }
       ]
     };

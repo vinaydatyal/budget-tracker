@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const incomingState: AppState = body.state;
     const merge: boolean = !!body.merge;
+    const allowEmpty: boolean = !!body.allowEmpty;
 
     if (!incomingState) {
       return NextResponse.json({ success: false, error: 'No state provided' }, { status: 400 });
@@ -26,8 +27,9 @@ export async function POST(req: Request) {
     const incomingTxnsCount = incomingState.transactions?.length || 0;
     const currentTxnsCount = current.transactions?.length || 0;
 
-    // Safety guard: If incoming state is empty/zero transactions, NEVER wipe existing server data
-    if (incomingTxnsCount === 0 && currentTxnsCount > 0) {
+    // Safety guard: If incoming state is empty/zero transactions and NOT explicitly flagged as allowEmpty,
+    // NEVER wipe existing server data (protects against background refresh clobbering)
+    if (!allowEmpty && incomingTxnsCount === 0 && currentTxnsCount > 0) {
       return NextResponse.json({
         success: true,
         state: current,
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
     }
 
     if (!merge) {
-      await writeServerState(incomingState);
+      await writeServerState(incomingState, allowEmpty);
       return NextResponse.json({ success: true, state: incomingState });
     }
 
@@ -135,6 +137,41 @@ export async function POST(req: Request) {
 
     await writeServerState(mergedState);
     return NextResponse.json({ success: true, state: mergedState });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    let id = searchParams.get('id');
+
+    if (!id) {
+      try {
+        const body = await req.json();
+        id = body?.id;
+      } catch {}
+    }
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Transaction ID is required' }, { status: 400 });
+    }
+
+    const current = await readServerState();
+    const beforeCount = (current.transactions || []).length;
+    current.transactions = (current.transactions || []).filter(t => t.id !== id);
+    current.ledger = (current.ledger || []).filter(l => l.transactionId !== id);
+
+    // Explicit deletion permits ledger to reach 0 rows
+    await writeServerState(current, true /* allowEmpty */);
+
+    return NextResponse.json({
+      success: true,
+      deletedId: id,
+      removed: beforeCount > current.transactions.length,
+      remaining: current.transactions.length
+    });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

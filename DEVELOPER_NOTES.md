@@ -188,6 +188,18 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
     5. **Magic Link Tolerance (`AuthContext.tsx`):** Handled duplicate action codes gracefully, suppressing spurious error alerts on double mounts.
     6. **Shared State Bootstrapping (`firestoreSync.ts`):** In `initOrLoadUser`, if a user logs in and their cloud profile has 0 transactions, SolV automatically bootstraps and seeds their private cloud vault from `shared/budget_app_state`.
     7. **Probe Restored & Verified:** PROBE-A (₹11,111) and PROBE-B (₹22,222) verified in Cloud Firestore `shared/budget_app_state` and local storage.
+- **Phase 18 (True Ledger Integrity: Payee-Aware Deduplication, Explicit Deletions & Verified Storage Feedback):**
+  - **The 4 Core Flaws Resolved:**
+    1. **Payee-Blind Deduplication:** The previous signature only checked `date_amount_description`. Two legitimate transactions occurring on the same day with the same amount and description but different payees (reproduced by the two ₹77 rows) collided, silently discarding the second transaction (which caused 102 rows / ₹21,752 to be dropped on full loads).
+    2. **Write Confirmation Decoupling:** `add_transactions_bulk` acknowledged transactions based on in-memory arrays before confirming remote database persistence, masking discarded rows.
+    3. **Cumulative Counter Discrepancies:** Counters over-reported ledger size by calculating from in-memory attempts rather than verified database reads.
+    4. **Undeletable Transactions (PROBE-B ₹22,222):** Set-union merging in `/api/sync` (`Current ∪ Incoming`) mathematically resurrected deleted rows, while Phase 17's empty-payload shield mistook deleting the final transaction for an accidental blank-state overwrite and blocked the write.
+  - **The Complete Solution Implemented:**
+    1. **Multi-Field Signature & External Reference Support:** Standardized `makeTransactionSignature` across `mcp-server/index.mjs` and `mcpTools.ts` to `date | type | amount | payee | description | account`. Added direct support for explicit `id` and `reference` attributes (e.g. UPI UTRs / Bank Transaction Reference IDs).
+    2. **Dedicated Server DELETE Handler (`/api/sync`):** Added an explicit HTTP `DELETE` route that filters transactions and associated ledger entries, passing `allowEmpty: true` to `writeServerState` so legitimate deletions can safely clear the ledger down to 0 rows.
+    3. **Read-Back Storage Verification:** `add_transactions_bulk` and `delete_transaction` now query storage post-write to verify actual persistence, itemize skipped duplicate entries, and report verified row totals.
+    4. **Authoritative Cloud Alignment (`readState`):** Replaced bidirectional resurrection merging in `mcp-server/index.mjs` with authoritative synchronization from `/api/sync`.
+    5. **PROBE-B Cleaned:** Successfully purged `txn-1795178326752-1y6t0` (PROBE-B ₹22,222) from Cloud Firestore `shared/budget_app_state` and local storage, restoring account outflow and net worth to ₹0.00.
 
 ## 9. Where to Find Things
 

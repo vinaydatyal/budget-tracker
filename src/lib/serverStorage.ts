@@ -153,10 +153,11 @@ export async function readServerState(): Promise<AppState> {
   }
 }
 
-export async function writeServerState(state: AppState): Promise<void> {
-  // Safety guard: If incoming state has 0 transactions, verify existing storage first.
-  // NEVER allow an empty state to overwrite an existing populated dataset!
-  if (!state.transactions || state.transactions.length === 0) {
+export async function writeServerState(state: AppState, allowEmpty: boolean = false): Promise<void> {
+  // Safety guard: If incoming state has 0 transactions and allowEmpty is false, verify existing storage first.
+  // NEVER allow an unintentional blank background sync to overwrite an existing populated dataset!
+  // Legitimate deletions or explicit reset requests (allowEmpty = true) are permitted.
+  if (!allowEmpty && (!state.transactions || state.transactions.length === 0)) {
     try {
       const current = await readServerState();
       if (current.transactions && current.transactions.length > 0) {

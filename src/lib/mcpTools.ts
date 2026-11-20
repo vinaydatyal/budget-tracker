@@ -411,6 +411,16 @@ export const MCP_TOOLS = [
   }
 ];
 
+function makeTransactionSignature(t: any): string {
+  const date = (t.date || '').slice(0, 10);
+  const type = (t.type || 'expense').toLowerCase();
+  const amount = Number(t.amount || 0).toFixed(2);
+  const payee = (t.payee || '').trim().toLowerCase();
+  const desc = (t.description || '').trim().toLowerCase();
+  const acc = (t.accountId || t.account || '').trim().toLowerCase();
+  return `${date}|${type}|${amount}|${payee}|${desc}|${acc}`;
+}
+
 export async function executeMcpTool(name: string, args: any): Promise<string> {
   const state = await readServerState();
 
@@ -426,8 +436,9 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
         if (!isNaN(d.getTime())) dateStr = d.toISOString();
       }
 
+      const txnId = args.id || args.reference || uid('txn');
       const txn: Transaction = {
-        id: uid('txn'),
+        id: txnId,
         type: args.type || 'expense',
         amount: args.amount,
         accountId: account.id,
@@ -463,15 +474,21 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       if (!list.length) return 'No transactions provided.';
       let totalIncome = 0;
       let totalExpense = 0;
+      const skippedList: string[] = [];
 
-      const existingSignatures = new Set((state.transactions || []).map(t =>
-        `${t.date?.slice(0, 10)}_${t.amount}_${(t.description || '').trim().toLowerCase()}`
-      ));
+      const existingTxnIds = new Set((state.transactions || []).map(t => t.id));
+      const existingSignatures = new Set((state.transactions || []).map(t => makeTransactionSignature(t)));
 
       const newTxns: Transaction[] = [];
       const newLedgerEntries: LedgerEntry[] = [];
 
       for (const item of list) {
+        const explicitId = item.id || item.reference;
+        if (explicitId && existingTxnIds.has(explicitId)) {
+          skippedList.push(`Duplicate ID: ${explicitId} ("${item.description}")`);
+          continue;
+        }
+
         const account = resolveAccount(state.accounts, item.account);
         const toAccount = item.toAccount ? resolveAccount(state.accounts, item.toAccount) : undefined;
         const category = resolveCategory(state.categories, item.category, item.type);
@@ -482,32 +499,45 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
           if (!isNaN(d.getTime())) dateStr = d.toISOString();
         }
 
-        const sig = `${dateStr.slice(0, 10)}_${item.amount}_${(item.description || '').trim().toLowerCase()}`;
-        if (!existingSignatures.has(sig)) {
-          const txn: Transaction = {
-            id: uid('txn'),
-            type: item.type || 'expense',
-            amount: item.amount,
-            accountId: account.id,
-            toAccountId: toAccount?.id,
-            categoryId: category.id,
-            description: item.description,
-            date: dateStr,
-            payee: item.payee,
-            notes: item.notes,
-            tags: item.tags || [],
-            isBusiness: item.isBusiness ?? account.isBusiness ?? false
-          };
+        const sig = makeTransactionSignature({
+          date: dateStr,
+          type: item.type,
+          amount: item.amount,
+          payee: item.payee,
+          description: item.description,
+          accountId: account.id
+        });
 
-          if (txn.type === 'income') totalIncome += txn.amount;
-          if (txn.type === 'expense') totalExpense += txn.amount;
+        if (existingSignatures.has(sig)) {
+          skippedList.push(`Duplicate entry: ${dateStr.slice(0, 10)} | ${formatMoney(item.amount, state.currency)} | ${item.payee ? item.payee + ' - ' : ''}"${item.description}"`);
+          continue;
+        }
 
-          newTxns.push(txn);
-          existingSignatures.add(sig);
+        const txnId = explicitId || uid('txn');
+        const txn: Transaction = {
+          id: txnId,
+          type: item.type || 'expense',
+          amount: item.amount,
+          accountId: account.id,
+          toAccountId: toAccount?.id,
+          categoryId: category.id,
+          description: item.description,
+          date: dateStr,
+          payee: item.payee,
+          notes: item.notes,
+          tags: item.tags || [],
+          isBusiness: item.isBusiness ?? account.isBusiness ?? false
+        };
 
-          if (txn.isBusiness) {
-            newLedgerEntries.push(...generateLedgerEntries(txn, state.accounts));
-          }
+        if (txn.type === 'income') totalIncome += txn.amount;
+        if (txn.type === 'expense') totalExpense += txn.amount;
+
+        newTxns.push(txn);
+        existingSignatures.add(sig);
+        existingTxnIds.add(txnId);
+
+        if (txn.isBusiness) {
+          newLedgerEntries.push(...generateLedgerEntries(txn, state.accounts));
         }
       }
 
@@ -517,7 +547,10 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       }
 
       await writeServerState(state);
-      return `✅ Successfully added ${newTxns.length} new transaction(s) in bulk! Cumulative Total in Ledger: ${state.transactions.length} rows\n` +
+      return `✅ Batch Write Processed:\n` +
+             `• Successfully added: ${newTxns.length} transaction(s)\n` +
+             (skippedList.length > 0 ? `• Duplicates skipped: ${skippedList.length} transaction(s)\n` : '') +
+             `• Verified Total in Ledger: ${state.transactions.length} rows\n` +
              `• Total Income Added: ${formatMoney(totalIncome, state.currency)}\n` +
              `• Total Expenses Added: ${formatMoney(totalExpense, state.currency)}`;
     }
@@ -570,8 +603,8 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       if (!txn) return `❌ Transaction with ID "${args.id}" not found.`;
       state.transactions = state.transactions.filter(t => t.id !== args.id);
       state.ledger = (state.ledger || []).filter(l => l.transactionId !== args.id);
-      await writeServerState(state);
-      return `🗑️ Deleted transaction "${txn.description}" (${formatMoney(txn.amount, state.currency)}).`;
+      await writeServerState(state, true /* allowEmpty */);
+      return `🗑️ Successfully deleted transaction "${txn.description}" (${formatMoney(txn.amount, state.currency)}). Remaining in ledger: ${state.transactions.length} rows.`;
     }
 
     case 'list_accounts': {

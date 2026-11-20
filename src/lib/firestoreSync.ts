@@ -13,14 +13,16 @@ export interface UserInitResult {
  * Initializes a new user document in Firestore if they are logging in for the first time,
  * or loads their existing cloud state if they are a returning user.
  */
-export async function initOrLoadUser(user: User): Promise<UserInitResult> {
+export async function initOrLoadUser(user: User, localFallbackState?: AppState): Promise<UserInitResult> {
   if (!db || !user?.uid) {
-    return { state: DEFAULT_STATE, isNewUser: false };
+    return { state: localFallbackState || DEFAULT_STATE, isNewUser: false };
   }
 
   try {
     const userDocRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userDocRef);
+
+    const hasLocalTransactions = localFallbackState && localFallbackState.transactions && localFallbackState.transactions.length > 0;
 
     if (snap.exists()) {
       const data = snap.data();
@@ -33,22 +35,42 @@ export async function initOrLoadUser(user: User): Promise<UserInitResult> {
         authProvider: user.providerData?.[0]?.providerId || data?.authProvider || 'google.com'
       }, { merge: true });
 
-      const cloudState: AppState = data?.state ? {
-        ...DEFAULT_STATE,
-        ...data.state,
-        transactions: data.state.transactions || [],
-        accounts: data.state.accounts && data.state.accounts.length > 0 ? data.state.accounts : DEFAULT_STATE.accounts,
-        categories: data.state.categories && data.state.categories.length > 0 ? data.state.categories : DEFAULT_STATE.categories,
-        budgetGoals: data.state.budgetGoals || [],
-        recurringTransactions: data.state.recurringTransactions || [],
-        debts: data.state.debts || [],
-        savingsGoals: data.state.savingsGoals || [],
-        ledger: data.state.ledger || []
-      } : DEFAULT_STATE;
+      const rawCloudState = data?.state;
+      const cloudTxns = rawCloudState?.transactions || [];
 
-      return { state: cloudState, isNewUser: false };
+      // If cloud already has transactions, use cloud state
+      if (cloudTxns.length > 0) {
+        const cloudState: AppState = {
+          ...DEFAULT_STATE,
+          ...rawCloudState,
+          transactions: cloudTxns,
+          accounts: rawCloudState.accounts && rawCloudState.accounts.length > 0 ? rawCloudState.accounts : DEFAULT_STATE.accounts,
+          categories: rawCloudState.categories && rawCloudState.categories.length > 0 ? rawCloudState.categories : DEFAULT_STATE.categories,
+          budgetGoals: rawCloudState.budgetGoals || [],
+          recurringTransactions: rawCloudState.recurringTransactions || [],
+          debts: rawCloudState.debts || [],
+          savingsGoals: rawCloudState.savingsGoals || [],
+          ledger: rawCloudState.ledger || []
+        };
+        return { state: cloudState, isNewUser: false };
+      }
+
+      // If cloud exists but has 0 transactions, and user has local transactions, MIGRATE local data to cloud!
+      if (hasLocalTransactions && localFallbackState) {
+        await setDoc(userDocRef, {
+          state: localFallbackState,
+          updatedAt: Date.now()
+        }, { merge: true });
+        console.log(`[Firebase] Migrated ${localFallbackState.transactions.length} local transactions to cloud user: ${user.uid}`);
+        return { state: localFallbackState, isNewUser: false };
+      }
+
+      return { state: DEFAULT_STATE, isNewUser: false };
     } else {
       // BRAND NEW USER IN FIREBASE!
+      // If user had local data before signing in, migrate it rather than wiping with DEFAULT_STATE!
+      const initialCandidate = (hasLocalTransactions && localFallbackState) ? localFallbackState : DEFAULT_STATE;
+
       const initialUserData = {
         uid: user.uid,
         email: user.email || '',
@@ -58,12 +80,12 @@ export async function initOrLoadUser(user: User): Promise<UserInitResult> {
         createdAt: Date.now(),
         lastLoginAt: Date.now(),
         updatedAt: Date.now(),
-        state: DEFAULT_STATE // Clean initial state for new user
+        state: initialCandidate
       };
 
       await setDoc(userDocRef, initialUserData);
-      console.log(`[Firebase] Initialized new user in Firestore: ${user.uid} (${user.email})`);
-      return { state: DEFAULT_STATE, isNewUser: true };
+      console.log(`[Firebase] Initialized new user in Firestore: ${user.uid} with ${initialCandidate.transactions.length} records`);
+      return { state: initialCandidate, isNewUser: true };
     }
   } catch (err: any) {
     console.error('Failed to init/load user from Firestore:', err);

@@ -164,6 +164,9 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Non-Destructive Union Merging (`/api/sync` & `mcp-server`):** Replaced destructive array overwrites with ID and name union merging. Accounts, categories, budgets, recurring transactions, debts, and savings goals are merged preserving custom entries and preventing default scaffolds from obliterating customized entities.
   - **Firestore Ingestion Bridge (`AppContext.tsx`):** When a user logs in to Firebase and has an empty Firestore profile, the app automatically checks `/api/sync` for records pushed by Claude MCP, ingests them into state, and immediately commits them permanently to Cloud Firestore (`users/{uid}`).
   - **Debounced Sync Protection:** Guarded browser-to-server sync so an empty authenticated state cannot overwrite `/api/sync` data.
+- **Phase 15 (Safe Local Storage Fallback & Login Data Migration Engine):**
+  - **First-Time Sign-In Data Preservation (`initOrLoadUser` in `firestoreSync.ts`):** Resolved the flaw where a newly authenticated Firebase user was unconditionally seeded with `DEFAULT_STATE`. `initOrLoadUser` now accepts `localFallbackState`; if the cloud profile is new or has 0 transactions, it migrates pre-existing local transactions directly into the user's Firestore vault (`users/{uid}`) instead of wiping them.
+  - **Cascading Local Storage Key Recovery (`storage.ts`):** `loadState(userId)` now inspects `budget_tracker_state_${userId}`, `budget_tracker_state_guest`, and legacy `budget_tracker_state`. If the user-specific storage key is empty, it recovers rich data from guest/legacy keys to prevent accidental data loss during guest-to-authenticated transitions.
 
 ## 9. Where to Find Things
 

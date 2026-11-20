@@ -529,15 +529,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (user) {
         // Authenticated with Google or Email: Load or create new user in Firebase Firestore
+        // First check local storage for any pre-existing transactions so they are safely migrated instead of wiped
+        const localCandidate = loadState(user.uid);
         try {
-          const { state: cloudState, isNewUser } = await initOrLoadUser(user);
+          const { state: cloudState, isNewUser } = await initOrLoadUser(user, localCandidate);
           saved = cloudState;
           if (isNewUser) {
             toast.success(`Welcome to Solv! New account created in Firebase.`, { icon: '🎉' });
           }
         } catch (error: any) {
           console.warn("Could not load cloud user, using offline cache:", error);
-          saved = loadState(user.uid);
+          saved = localCandidate;
         }
 
         // Bridge: If Cloud Firestore user currently has no transactions, check if Claude pushed transactions via MCP

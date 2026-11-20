@@ -91,13 +91,43 @@ export function loadState(userId?: string | null): AppState {
     const key = getUserStorageKey(userId);
     let raw = localStorage.getItem(key);
     
-    // Backwards compatibility for existing guests before user-keyed storage was introduced
-    if (!raw && (!userId || userId === 'guest')) {
-      raw = localStorage.getItem(STORAGE_KEY);
+    // Check if user's specific key has data. If missing or 0 transactions, check guest & legacy keys
+    let parsedCandidate: AppState | null = null;
+    if (raw) {
+      try {
+        parsedCandidate = JSON.parse(raw);
+      } catch {}
     }
 
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw) as AppState;
+    if (!parsedCandidate || !parsedCandidate.transactions || parsedCandidate.transactions.length === 0) {
+      // Check guest storage key
+      const guestRaw = localStorage.getItem('budget_tracker_state_guest');
+      if (guestRaw) {
+        try {
+          const guestParsed = JSON.parse(guestRaw);
+          if (guestParsed.transactions && guestParsed.transactions.length > 0) {
+            raw = guestRaw;
+            parsedCandidate = guestParsed;
+          }
+        } catch {}
+      }
+      // Check legacy storage key
+      if (!parsedCandidate || !parsedCandidate.transactions || parsedCandidate.transactions.length === 0) {
+        const legacyRaw = localStorage.getItem(STORAGE_KEY);
+        if (legacyRaw) {
+          try {
+            const legacyParsed = JSON.parse(legacyRaw);
+            if (legacyParsed.transactions && legacyParsed.transactions.length > 0) {
+              raw = legacyRaw;
+              parsedCandidate = legacyParsed;
+            }
+          } catch {}
+        }
+      }
+    }
+
+    if (!raw || !parsedCandidate) return DEFAULT_STATE;
+    const parsed = parsedCandidate;
     
     // Backwards compatibility for existing transactions missing accountId
     if (parsed.transactions) {

@@ -214,6 +214,18 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
     2. **Clean Key Construction:** In `mcpTools.ts`, updated `add_transaction` and `add_transactions_bulk` to conditionally attach optional properties (`toAccountId`, `payee`, `notes`) only when defined.
     3. **Authoritative Storage Read-Back:** In `mcpTools.ts`, all write actions (`add_transactions_bulk`, `add_transaction`, `update_transaction`, `delete_transaction`) now perform an authoritative `await readServerState()` post-write and verify and report the real persisted row count directly from cloud storage.
     4. **Active Error Visibility:** Updated `writeServerState` to log and throw Firestore errors instead of silently masking them.
+- **Phase 21 (Identity Verification, Whoami Tool, and Cloud MCP Vault Bridge):**
+  - **The Identity & Profile Partitioning Model:**
+    - Clarified the relationship between the web app's signed-in user documents (`users/{userId}` in Cloud Firestore, protected by `request.auth.uid == userId`) and the remote MCP server's production vault (`shared/budget_app_state`).
+    - Clarified that the previous 1,244-row load did NOT persist to the shared document either (due to Phase 20's `undefined` serialization bug), eliminating any risk of duplicate 2,488 rows.
+  - **The New `whoami` Tool:**
+    - Added a dedicated `whoami` tool to `MCP_TOOLS` in `src/lib/mcpTools.ts` and `mcp-server/index.mjs`.
+    - Returns active vault scope, target Firestore document path (`shared/budget_app_state`), Firebase project ID (`budgetpro-c85b5`), cumulative inflow/outflow, and total verified transactions in the ledger.
+  - **Vault Scope Transparency in `list_accounts`:**
+    - Updated `list_accounts` across both remote HTTP and stdio transports to prepend the active vault scope and total records count alongside account balances.
+  - **Cloud MCP Vault Bridge in Web UI (`AppContext.tsx` & `SettingsPage.tsx`):**
+    - Built a 1-click manual "Sync with Cloud MCP Vault" action in `AppContext.tsx` (`syncWithServerVault`), allowing logged-in or guest users to pull and merge remote MCP changes on demand.
+    - Updated window focus listener (`handleSyncOnFocus`) to automatically persist incoming MCP batches into the user's private Cloud Firestore vault upon tab switch.
 
 ## 9. Where to Find Things
 

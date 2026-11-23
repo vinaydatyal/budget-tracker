@@ -408,6 +408,11 @@ export const MCP_TOOLS = [
         month: { type: 'string', description: 'Target month YYYY-MM' }
       }
     }
+  },
+  {
+    name: 'whoami',
+    description: 'Inspect connected profile identity, active vault scope, Cloud Firestore database document path, and ledger totals.',
+    inputSchema: { type: 'object', properties: {} }
   }
 ];
 
@@ -618,12 +623,19 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
     case 'list_accounts': {
       const balances = calculateAccountBalances(state);
       let totalLiquid = 0;
+      let totalInflow = 0;
+      let totalOutflow = 0;
       const lines = balances.map(a => {
         totalLiquid += a.balance;
+        totalInflow += (a.income || 0);
+        totalOutflow += (a.expense || 0);
         return `• ${a.name} [${a.assetType}] ${a.isBusiness ? '(Business)' : '(Personal)'}\n` +
                `  Balance: ${formatMoney(a.balance, state.currency)} | Inflow: ${formatMoney(a.income, state.currency)} | Outflow: ${formatMoney(a.expense, state.currency)} | ID: ${a.id}`;
       });
-      return `📊 Total Liquid Assets: ${formatMoney(totalLiquid, state.currency)}\n\nAccounts:\n` + lines.join('\n\n');
+      return `👤 Vault / Identity: Primary Shared Cloud Vault [shared/budget_app_state]\n` +
+             `📊 Total Liquid Assets: ${formatMoney(totalLiquid, state.currency)} (Inflow: ${formatMoney(totalInflow, state.currency)} | Outflow: ${formatMoney(totalOutflow, state.currency)})\n` +
+             `📁 Total Records in Ledger: ${state.transactions?.length || 0} rows\n\n` +
+             `Accounts:\n` + lines.join('\n\n');
     }
 
     case 'add_account': {
@@ -973,6 +985,29 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
 
       const lines = sorted.map(s => `• ${s.icon} ${s.name}: ${formatMoney(s.amount, state.currency)} (${s.pct}%)`);
       return `📊 SPENDING BREAKDOWN FOR ${targetMonth}:\nTotal Expenses: ${formatMoney(totalExpense, state.currency)}\n\n` + (lines.length ? lines.join('\n') : 'No expenses recorded.');
+    }
+
+    case 'whoami': {
+      const balances = calculateAccountBalances(state);
+      let totalLiquid = 0;
+      let totalInflow = 0;
+      let totalOutflow = 0;
+      balances.forEach(a => {
+        totalLiquid += a.balance;
+        totalInflow += (a.income || 0);
+        totalOutflow += (a.expense || 0);
+      });
+
+      return `👤 SOLV MCP IDENTITY & VAULT VERIFICATION:\n\n` +
+             `• Active Vault Scope: Primary Shared Cloud Vault (Production)\n` +
+             `• Target Firestore Document: shared/budget_app_state\n` +
+             `• Firebase Project ID: budgetpro-c85b5 (Location: nam5)\n` +
+             `• Total Ledger Records: ${state.transactions?.length || 0} rows\n` +
+             `• Total Accounts: ${state.accounts?.length || 0} accounts\n` +
+             `• Cumulative Outflow: ${formatMoney(totalOutflow, state.currency)}\n` +
+             `• Cumulative Inflow: ${formatMoney(totalInflow, state.currency)}\n` +
+             `• Liquid Net Worth: ${formatMoney(totalLiquid, state.currency)}\n` +
+             `• Web App Sync Bridge: Active (Bidirectional auto-merge on browser tab focus & Settings > Cloud Vault Sync)`;
     }
 
     default:

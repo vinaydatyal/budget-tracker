@@ -485,6 +485,7 @@ interface AppContextValue {
   importData: (data: string) => boolean;
   clearData: () => void;
   loadDemoData: () => void;
+  syncWithServerVault: () => Promise<number>;
   isInitializing: boolean;
 }
 
@@ -734,6 +735,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           };
           dispatch({ type: 'LOAD_STATE', payload: merged });
           saveState(merged, user ? user.uid : 'guest');
+          if (user) {
+            saveUserCloudState(user, merged).catch(() => {});
+          }
           toast.success(`✨ Synced ${newTxns.length} new transaction(s) from Claude!`, { id: 'mcp-sync-toast' });
         }
       } catch (err) {
@@ -743,7 +747,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('focus', handleSyncOnFocus);
     return () => window.removeEventListener('focus', handleSyncOnFocus);
-  }, [state.transactions]);
+  }, [state.transactions, user]);
+
+  const syncWithServerVault = useCallback(async (): Promise<number> => {
+    try {
+      const res = await fetch('/api/sync');
+      if (!res.ok) {
+        toast.error('Could not connect to Cloud MCP vault.');
+        return 0;
+      }
+      const data = await res.json();
+      const serverState: AppState = data.state;
+      if (!serverState || !serverState.transactions || serverState.transactions.length === 0) {
+        toast('Cloud MCP vault is currently empty (0 transactions).', { icon: 'ℹ️' });
+        return 0;
+      }
+
+      const currentTxnIds = new Set(state.transactions.map(t => t.id));
+      const newTxns = serverState.transactions.filter(t => !currentTxnIds.has(t.id));
+
+      const merged: AppState = {
+        ...state,
+        ...serverState,
+        transactions: newTxns.length > 0 ? [...newTxns, ...state.transactions] : state.transactions,
+        accounts: serverState.accounts?.length ? serverState.accounts : state.accounts,
+        categories: serverState.categories?.length ? serverState.categories : state.categories,
+        budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : state.budgetGoals,
+        recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : state.recurringTransactions,
+      };
+
+      dispatch({ type: 'LOAD_STATE', payload: merged });
+      saveState(merged, user ? user.uid : 'guest');
+      if (user) {
+        await saveUserCloudState(user, merged);
+      }
+      if (newTxns.length > 0) {
+        toast.success(`✨ Successfully synced ${newTxns.length} new record(s) from Cloud MCP vault!`, { icon: '☁️' });
+      } else {
+        toast.success(`✓ Vault is already up-to-date (${state.transactions.length} records).`, { icon: '✅' });
+      }
+      return newTxns.length;
+    } catch (err: any) {
+      toast.error('Sync failed: ' + err.message);
+      return 0;
+    }
+  }, [state, user]);
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       window.addEventListener('load', function() {
@@ -1006,6 +1054,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         importData,
         clearData,
         loadDemoData,
+        syncWithServerVault,
         isInitializing
       }}
     >

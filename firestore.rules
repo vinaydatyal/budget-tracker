@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User-scoped private documents: only authenticated owner can read or write
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Shared vault document for server/MCP synchronization
+    match /shared/{document} {
+      allow read, write: if true;
+    }
+  }
+}

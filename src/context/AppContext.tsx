@@ -485,7 +485,6 @@ interface AppContextValue {
   importData: (data: string) => boolean;
   clearData: () => void;
   loadDemoData: () => void;
-  syncWithServerVault: () => Promise<number>;
   isInitializing: boolean;
 }
 
@@ -543,31 +542,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           saved = localCandidate;
         }
 
-        // Bridge: If Cloud Firestore user currently has no transactions, check if Claude pushed transactions via MCP
-        if (!saved.transactions || saved.transactions.length === 0) {
-          try {
-            const syncRes = await fetch('/api/sync');
-            if (syncRes.ok) {
-              const syncData = await syncRes.json();
-              const serverState: AppState = syncData.state;
-              if (serverState && serverState.transactions && serverState.transactions.length > 0) {
-                saved = {
-                  ...saved,
-                  ...serverState,
-                  transactions: serverState.transactions,
-                  accounts: serverState.accounts?.length ? serverState.accounts : saved.accounts,
-                  categories: serverState.categories?.length ? serverState.categories : saved.categories,
-                  budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : saved.budgetGoals,
-                  recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : saved.recurringTransactions,
-                };
-                // Automatically persist the seeded data into Cloud Firestore
-                saveUserCloudState(user, saved).catch(() => {});
-                toast.success(`✨ Imported ${serverState.transactions.length} records into your Cloud Vault!`, { id: 'cloud-seed-toast' });
-              }
+        // Automatic Recovery & Bridge: If server state holds the MCP load (e.g. 1,244 records) and user has fewer,
+        // automatically import and persist them into the user's private Cloud Firestore vault!
+        try {
+          const syncRes = await fetch('/api/sync');
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            const serverState: AppState = syncData.state;
+            if (serverState && serverState.transactions && serverState.transactions.length > (saved.transactions?.length || 0)) {
+              saved = {
+                ...saved,
+                ...serverState,
+                transactions: serverState.transactions,
+                accounts: serverState.accounts?.length ? serverState.accounts : saved.accounts,
+                categories: serverState.categories?.length ? serverState.categories : saved.categories,
+                budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : saved.budgetGoals,
+                recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : saved.recurringTransactions,
+              };
+              // Automatically persist into the user's private Cloud Firestore profile
+              saveUserCloudState(user, saved).catch(() => {});
+              toast.success(`✨ Imported ${serverState.transactions.length} records into your Cloud Vault!`, { id: 'cloud-seed-toast' });
             }
-          } catch {
-            // Offline
           }
+        } catch {
+          // Offline
         }
       } else {
         // Guest mode (unauthenticated)
@@ -749,49 +747,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('focus', handleSyncOnFocus);
   }, [state.transactions, user]);
 
-  const syncWithServerVault = useCallback(async (): Promise<number> => {
-    try {
-      const res = await fetch('/api/sync');
-      if (!res.ok) {
-        toast.error('Could not connect to Cloud MCP vault.');
-        return 0;
-      }
-      const data = await res.json();
-      const serverState: AppState = data.state;
-      if (!serverState || !serverState.transactions || serverState.transactions.length === 0) {
-        toast('Cloud MCP vault is currently empty (0 transactions).', { icon: 'ℹ️' });
-        return 0;
-      }
-
-      const currentTxnIds = new Set(state.transactions.map(t => t.id));
-      const newTxns = serverState.transactions.filter(t => !currentTxnIds.has(t.id));
-
-      const merged: AppState = {
-        ...state,
-        ...serverState,
-        transactions: newTxns.length > 0 ? [...newTxns, ...state.transactions] : state.transactions,
-        accounts: serverState.accounts?.length ? serverState.accounts : state.accounts,
-        categories: serverState.categories?.length ? serverState.categories : state.categories,
-        budgetGoals: serverState.budgetGoals?.length ? serverState.budgetGoals : state.budgetGoals,
-        recurringTransactions: serverState.recurringTransactions?.length ? serverState.recurringTransactions : state.recurringTransactions,
-      };
-
-      dispatch({ type: 'LOAD_STATE', payload: merged });
-      saveState(merged, user ? user.uid : 'guest');
-      if (user) {
-        await saveUserCloudState(user, merged);
-      }
-      if (newTxns.length > 0) {
-        toast.success(`✨ Successfully synced ${newTxns.length} new record(s) from Cloud MCP vault!`, { icon: '☁️' });
-      } else {
-        toast.success(`✓ Vault is already up-to-date (${state.transactions.length} records).`, { icon: '✅' });
-      }
-      return newTxns.length;
-    } catch (err: any) {
-      toast.error('Sync failed: ' + err.message);
-      return 0;
-    }
-  }, [state, user]);
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       window.addEventListener('load', function() {
@@ -1054,7 +1009,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         importData,
         clearData,
         loadDemoData,
-        syncWithServerVault,
         isInitializing
       }}
     >

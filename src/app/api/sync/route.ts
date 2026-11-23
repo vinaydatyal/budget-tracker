@@ -122,8 +122,8 @@ export async function POST(req: Request) {
 
     const mergedState: AppState = {
       ...DEFAULT_STATE,
-      ...incomingState,
       ...current,
+      ...incomingState,
       transactions: mergedTxns,
       accounts: mergedAccounts.length > 0 ? mergedAccounts : current.accounts,
       categories: mergedCategories.length > 0 ? mergedCategories : current.categories,

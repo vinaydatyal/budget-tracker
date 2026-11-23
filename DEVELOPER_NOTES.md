@@ -226,6 +226,11 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **Cloud MCP Vault Bridge in Web UI (`AppContext.tsx` & `SettingsPage.tsx`):**
     - Built a 1-click manual "Sync with Cloud MCP Vault" action in `AppContext.tsx` (`syncWithServerVault`), allowing logged-in or guest users to pull and merge remote MCP changes on demand.
     - Updated window focus listener (`handleSyncOnFocus`) to automatically persist incoming MCP batches into the user's private Cloud Firestore vault upon tab switch.
+- **Phase 22 (Automatic High-Watermark Profile Migration & Client Scalar Priority Fix):**
+  - **Removed Manual UI Options:** Cleaned `SettingsPage.tsx` of the temporary manual "Sync with Cloud MCP Vault" button per user requirement.
+  - **Automatic High-Watermark Migration:** Updated `initOrLoadUser` (`firestoreSync.ts`) and `AppContext.tsx` so that when the authenticated user (`datyal.upwork@gmail.com`) loads the app, if `shared/budget_app_state` holds more transactions (1,244 rows) than the user's private cloud document, it automatically writes the full dataset into `users/{user.uid}` in Cloud Firestore within the authenticated context.
+  - **Client Scalar Spread Fix (`/api/sync`):** Fixed object spread order in `src/app/api/sync/route.ts` so `...incomingState` is spread after `...current`, ensuring client-side scalar preferences and currencies properly take precedence over stale server state.
+  - **Security Declarations Added:** Added `firestore.rules` and `firebase.json` to the repository root to version-control document access policies.
 
 ## 9. Where to Find Things
 

@@ -40,7 +40,7 @@ const TABS = [
 ];
 
 export default function SettingsPage() {
-  const { state, updatePreferences, dispatch, exportData, importData, clearData, loadDemoData, syncWithServerVault } = useApp();
+  const { state, updatePreferences, dispatch, exportData, importData, clearData, loadDemoData } = useApp();
   const { user, signInWithGoogle, signOut } = useAuth();
   const { preferences } = state;
   const [activeTab, setActiveTab] = useState('core');
@@ -235,23 +235,6 @@ export default function SettingsPage() {
                       ✓ Your private data is actively backed up to Google Cloud Firestore (US-nam5).
                     </div>
 
-                    <div style={{ padding: 14, background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: 8, width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-main)' }}>Cloud MCP Vault Bridge</span>
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: 'var(--income-subtle)', color: 'var(--income)', fontWeight: 600 }}>Connected</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                        Import or merge transactions written remotely by Claude Desktop or Claude Connectors via MCP (<code style={{ fontSize: 11 }}>shared/budget_app_state</code>).
-                      </p>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ alignSelf: 'flex-start', marginTop: 4, fontSize: 13 }}
-                        onClick={() => syncWithServerVault()}
-                      >
-                        🔄 Sync with Cloud MCP Vault
-                      </button>
-                    </div>
-
                     <button className="btn btn-secondary" onClick={signOut} style={{ alignSelf: 'flex-start' }}>
                       <LogOut size={16} /> Sign Out
                     </button>
@@ -263,23 +246,6 @@ export default function SettingsPage() {
                       <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                         Sign in with Google or Email to automatically backup your data and access it across devices.
                       </p>
-                    </div>
-
-                    <div style={{ padding: 14, background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: 8, width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-main)' }}>Cloud MCP Vault Bridge</span>
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: 'var(--income-subtle)', color: 'var(--income)', fontWeight: 600 }}>Active</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                        Sync transactions written remotely by Claude Desktop or Claude Connectors.
-                      </p>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ alignSelf: 'flex-start', marginTop: 4, fontSize: 13 }}
-                        onClick={() => syncWithServerVault()}
-                      >
-                        🔄 Sync with Cloud MCP Vault
-                      </button>
                     </div>
 
                     <button className="btn btn-primary" onClick={signInWithGoogle} style={{ alignSelf: 'flex-start' }}>

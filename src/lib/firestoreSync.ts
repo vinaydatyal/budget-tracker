@@ -50,6 +50,29 @@ export async function initOrLoadUser(user: User, localFallbackState?: AppState):
       const rawCloudState = data?.state;
       const cloudTxns = rawCloudState?.transactions || [];
 
+      // PRIORITY RECOVERY: If shared document has more transactions (e.g. 1,244 MCP transactions),
+      // migrate sharedCandidate into the authenticated user's private cloud document!
+      if (sharedCandidate && sharedCandidate.transactions && sharedCandidate.transactions.length > cloudTxns.length) {
+        const migratedState: AppState = {
+          ...DEFAULT_STATE,
+          ...sharedCandidate,
+          transactions: sharedCandidate.transactions,
+          accounts: sharedCandidate.accounts && sharedCandidate.accounts.length > 0 ? sharedCandidate.accounts : DEFAULT_STATE.accounts,
+          categories: sharedCandidate.categories && sharedCandidate.categories.length > 0 ? sharedCandidate.categories : DEFAULT_STATE.categories,
+          budgetGoals: sharedCandidate.budgetGoals || [],
+          recurringTransactions: sharedCandidate.recurringTransactions || [],
+          debts: sharedCandidate.debts || [],
+          savingsGoals: sharedCandidate.savingsGoals || [],
+          ledger: sharedCandidate.ledger || []
+        };
+        await setDoc(userDocRef, {
+          state: JSON.parse(JSON.stringify(migratedState)),
+          updatedAt: Date.now()
+        }, { merge: true });
+        console.log(`[Firebase] Successfully migrated ${sharedCandidate.transactions.length} records into user vault: ${user.uid}`);
+        return { state: migratedState, isNewUser: false };
+      }
+
       // If cloud already has transactions, use cloud state
       if (cloudTxns.length > 0) {
         const cloudState: AppState = {

@@ -167,16 +167,21 @@ export async function writeServerState(state: AppState, allowEmpty: boolean = fa
     } catch {}
   }
 
+  // Deep sanitize state: strip any `undefined` values to satisfy Firestore serialization requirements!
+  // Firestore throws `Unsupported field value: undefined` if any property in an object or array is undefined.
+  const cleanState: AppState = JSON.parse(JSON.stringify(state));
+
   // 1. Primary Cloud Persistence: Cloud Firestore shared vault
   if (db) {
     try {
       const docRef = doc(db, 'shared', 'budget_app_state');
       await setDoc(docRef, {
-        state,
+        state: cleanState,
         updatedAt: Date.now()
       }, { merge: true });
-    } catch (err) {
-      console.warn('[ServerStorage] Cloud Firestore write error:', err);
+    } catch (err: any) {
+      console.error('[ServerStorage] Cloud Firestore write error:', err?.message || err);
+      throw new Error(`Failed to persist to Cloud Firestore: ${err?.message || err}`);
     }
   }
 
@@ -192,7 +197,7 @@ export async function writeServerState(state: AppState, allowEmpty: boolean = fa
           Authorization: `Bearer ${kvToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(state)
+        body: JSON.stringify(cleanState)
       });
     } catch (err) {
       console.warn('KV write error, falling back to disk:', err);
@@ -207,7 +212,7 @@ export async function writeServerState(state: AppState, allowEmpty: boolean = fa
       fs.mkdirSync(dir, { recursive: true });
     }
     const tempPath = `${filePath}.tmp.${Date.now()}`;
-    fs.writeFileSync(tempPath, JSON.stringify(state, null, 2), 'utf8');
+    fs.writeFileSync(tempPath, JSON.stringify(cleanState, null, 2), 'utf8');
     fs.renameSync(tempPath, filePath);
   } catch (err) {
     console.error('Error writing server state to file:', err);

@@ -204,6 +204,16 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
   - **The 51-Hour "Wipe" Clarified:** SolV did NOT wipe or reset itself over the weekend. On Friday at 21:09 (local time), Antigravity executed an administrative cleanup of `txn-1795178326752-1y6t0` (PROBE-B ₹22,222) at the user's request. Because PROBE-B was the final remaining transaction, its intentional deletion left the ledger at 0 rows. The Cloud Firestore document (`updatedAt: 1795189358513`) remained completely untouched and persistent for 65+ continuous hours with zero container resets.
   - **Live Payee Verification Probe Planted:** Deployed two ₹101.00 test transactions with identical dates and descriptions differing ONLY by payee (`PROBE-PAYEE-A` and `PROBE-PAYEE-B`). Confirmed both rows simultaneously active in Cloud Firestore and `/api/sync` with total outflow ₹202.00.
   - **Claude Desktop Refresh Notice:** Advised restarting Claude Desktop if its background node MCP process had cached the pre-Friday MCP server in memory.
+- **Phase 20 (Cloud MCP Serialization Hardening & Undefined Field Bug Elimination):**
+  - **The "Phantom Write" Mystery Solved:**
+    - In Claude Cloud sessions (talking via `/api/mcp`), calling `add_transactions_bulk` reported `"Successfully added: 2 • Verified Total in Ledger: 4"`, yet subsequent reads still returned 2 rows and outflow ₹202.00.
+    - **Root Cause Identified:** Firestore's Web SDK (`@firebase/firestore`) strictly disallows `undefined` values in document trees, throwing `[FirebaseError: Function setDoc() called with invalid data. Unsupported field value: undefined]`. In `mcpTools.ts`, transaction payloads built optional keys unconditionally (e.g., `toAccountId: toAccount?.id`, `payee: item.payee`, `notes: item.notes`). Whenever `toAccount` or optional fields were absent, these fields evaluated to `undefined`.
+    - This threw an unhandled error inside `writeServerState`, which was caught and suppressed by an overly broad catch block. The serverless function fell back to writing to `/tmp/app_state.json` on that ephemeral lambda container while Firestore remained untouched. When the container recycled or when another container answered the next request (or `/api/sync`), the ephemeral file vanished and only the old Firestore snapshot was read.
+  - **The End-to-End Fix:**
+    1. **Deep Serialization Sanitization:** Added `JSON.parse(JSON.stringify(state))` in `serverStorage.writeServerState` and `firestoreSync.ts` before calling `setDoc`. This recursively strips any `undefined` values, guaranteeing 100% compliant Firestore serialization.
+    2. **Clean Key Construction:** In `mcpTools.ts`, updated `add_transaction` and `add_transactions_bulk` to conditionally attach optional properties (`toAccountId`, `payee`, `notes`) only when defined.
+    3. **Authoritative Storage Read-Back:** In `mcpTools.ts`, all write actions (`add_transactions_bulk`, `add_transaction`, `update_transaction`, `delete_transaction`) now perform an authoritative `await readServerState()` post-write and verify and report the real persisted row count directly from cloud storage.
+    4. **Active Error Visibility:** Updated `writeServerState` to log and throw Firestore errors instead of silently masking them.
 
 ## 9. Where to Find Things
 

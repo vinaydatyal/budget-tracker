@@ -70,7 +70,7 @@ export async function initOrLoadUser(user: User, localFallbackState?: AppState):
       // If cloud exists but has 0 transactions, and user has local transactions, MIGRATE local data to cloud!
       if (hasLocalTransactions && localFallbackState) {
         await setDoc(userDocRef, {
-          state: localFallbackState,
+          state: JSON.parse(JSON.stringify(localFallbackState)),
           updatedAt: Date.now()
         }, { merge: true });
         console.log(`[Firebase] Migrated ${localFallbackState.transactions.length} local transactions to cloud user: ${user.uid}`);
@@ -80,7 +80,7 @@ export async function initOrLoadUser(user: User, localFallbackState?: AppState):
       // If cloud has 0 transactions and local is empty, seed from shared state if available
       if (sharedCandidate && sharedCandidate.transactions && sharedCandidate.transactions.length > 0) {
         await setDoc(userDocRef, {
-          state: sharedCandidate,
+          state: JSON.parse(JSON.stringify(sharedCandidate)),
           updatedAt: Date.now()
         }, { merge: true });
         console.log(`[Firebase] Seeded ${sharedCandidate.transactions.length} shared transactions to returning cloud user: ${user.uid}`);
@@ -104,7 +104,7 @@ export async function initOrLoadUser(user: User, localFallbackState?: AppState):
         createdAt: Date.now(),
         lastLoginAt: Date.now(),
         updatedAt: Date.now(),
-        state: initialCandidate
+        state: JSON.parse(JSON.stringify(initialCandidate))
       };
 
       await setDoc(userDocRef, initialUserData);
@@ -156,7 +156,7 @@ export async function saveUserCloudState(
   try {
     const userDocRef = doc(db, 'users', userId);
     const payload: any = {
-      state,
+      state: JSON.parse(JSON.stringify(state)),
       updatedAt: Date.now()
     };
 

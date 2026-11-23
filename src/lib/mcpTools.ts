@@ -442,12 +442,12 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
         type: args.type || 'expense',
         amount: args.amount,
         accountId: account.id,
-        toAccountId: toAccount?.id,
+        ...(toAccount?.id ? { toAccountId: toAccount.id } : {}),
         categoryId: category.id,
         description: args.description,
         date: dateStr,
-        payee: args.payee,
-        notes: args.notes,
+        ...(args.payee ? { payee: args.payee } : {}),
+        ...(args.notes ? { notes: args.notes } : {}),
         tags: args.tags || [],
         isBusiness: args.isBusiness ?? account.isBusiness ?? false
       };
@@ -458,13 +458,14 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       }
 
       await writeServerState(state);
-      const balances = calculateAccountBalances(state);
+      const verified = await readServerState();
+      const balances = calculateAccountBalances(verified);
       const updatedAcc = balances.find(a => a.id === account.id);
 
-      return `✅ Added ${txn.type.toUpperCase()} of ${formatMoney(args.amount, state.currency)}: "${args.description}"\n` +
-             `• Total in ledger: ${state.transactions.length} rows\n` +
+      return `✅ Added ${txn.type.toUpperCase()} of ${formatMoney(args.amount, verified.currency)}: "${args.description}"\n` +
+             `• Total in ledger: ${verified.transactions.length} rows\n` +
              `• Category: ${category.name} ${category.icon || ''}\n` +
-             `• Account: ${account.name} (New balance: ${formatMoney(updatedAcc?.balance || 0, state.currency)})\n` +
+             `• Account: ${account.name} (New balance: ${formatMoney(updatedAcc?.balance || 0, verified.currency)})\n` +
              `• Date: ${dateStr.slice(0, 10)}\n` +
              `• ID: ${txn.id}`;
     }
@@ -519,12 +520,12 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
           type: item.type || 'expense',
           amount: item.amount,
           accountId: account.id,
-          toAccountId: toAccount?.id,
+          ...(toAccount?.id ? { toAccountId: toAccount.id } : {}),
           categoryId: category.id,
           description: item.description,
           date: dateStr,
-          payee: item.payee,
-          notes: item.notes,
+          ...(item.payee ? { payee: item.payee } : {}),
+          ...(item.notes ? { notes: item.notes } : {}),
           tags: item.tags || [],
           isBusiness: item.isBusiness ?? account.isBusiness ?? false
         };
@@ -547,12 +548,15 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       }
 
       await writeServerState(state);
+      const verified = await readServerState();
+      const verifiedCount = verified.transactions?.length || 0;
+
       return `✅ Batch Write Processed:\n` +
              `• Successfully added: ${newTxns.length} transaction(s)\n` +
              (skippedList.length > 0 ? `• Duplicates skipped: ${skippedList.length} transaction(s)\n` : '') +
-             `• Verified Total in Ledger: ${state.transactions.length} rows\n` +
-             `• Total Income Added: ${formatMoney(totalIncome, state.currency)}\n` +
-             `• Total Expenses Added: ${formatMoney(totalExpense, state.currency)}`;
+             `• Verified Total in Ledger: ${verifiedCount} rows\n` +
+             `• Total Income Added: ${formatMoney(totalIncome, verified.currency)}\n` +
+             `• Total Expenses Added: ${formatMoney(totalExpense, verified.currency)}`;
     }
 
     case 'get_transactions': {
@@ -586,16 +590,19 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
     case 'update_transaction': {
       const idx = state.transactions.findIndex(t => t.id === args.id);
       if (idx === -1) return `❌ Transaction with ID "${args.id}" not found.`;
-      const current = state.transactions[idx];
+      const current = { ...state.transactions[idx] };
       if (args.amount !== undefined) current.amount = args.amount;
       if (args.description !== undefined) current.description = args.description;
       if (args.type !== undefined) current.type = args.type;
       if (args.date !== undefined) current.date = new Date(args.date).toISOString();
       if (args.account !== undefined) current.accountId = resolveAccount(state.accounts, args.account).id;
       if (args.category !== undefined) current.categoryId = resolveCategory(state.categories, args.category, current.type).id;
+      if (args.payee !== undefined) current.payee = args.payee;
+      if (args.notes !== undefined) current.notes = args.notes;
       state.transactions[idx] = current;
       await writeServerState(state);
-      return `✅ Updated transaction ${args.id}: "${current.description}" (${formatMoney(current.amount, state.currency)})`;
+      const verified = await readServerState();
+      return `✅ Updated transaction ${args.id}: "${current.description}" (${formatMoney(current.amount, verified.currency)})`;
     }
 
     case 'delete_transaction': {
@@ -604,7 +611,8 @@ export async function executeMcpTool(name: string, args: any): Promise<string> {
       state.transactions = state.transactions.filter(t => t.id !== args.id);
       state.ledger = (state.ledger || []).filter(l => l.transactionId !== args.id);
       await writeServerState(state, true /* allowEmpty */);
-      return `🗑️ Successfully deleted transaction "${txn.description}" (${formatMoney(txn.amount, state.currency)}). Remaining in ledger: ${state.transactions.length} rows.`;
+      const verified = await readServerState();
+      return `🗑️ Successfully deleted transaction "${txn.description}" (${formatMoney(txn.amount, verified.currency)}). Remaining in ledger: ${verified.transactions.length} rows.`;
     }
 
     case 'list_accounts': {

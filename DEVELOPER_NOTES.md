@@ -200,6 +200,10 @@ To keep the UI clean, advanced features are hidden behind an Add-On architecture
     3. **Read-Back Storage Verification:** `add_transactions_bulk` and `delete_transaction` now query storage post-write to verify actual persistence, itemize skipped duplicate entries, and report verified row totals.
     4. **Authoritative Cloud Alignment (`readState`):** Replaced bidirectional resurrection merging in `mcp-server/index.mjs` with authoritative synchronization from `/api/sync`.
     5. **PROBE-B Cleaned:** Successfully purged `txn-1795178326752-1y6t0` (PROBE-B ₹22,222) from Cloud Firestore `shared/budget_app_state` and local storage, restoring account outflow and net worth to ₹0.00.
+- **Phase 19 (Weekend 65h+ Durability Audit & Live 2-Row Payee Probe Deployment):**
+  - **The 51-Hour "Wipe" Clarified:** SolV did NOT wipe or reset itself over the weekend. On Friday at 21:09 (local time), Antigravity executed an administrative cleanup of `txn-1795178326752-1y6t0` (PROBE-B ₹22,222) at the user's request. Because PROBE-B was the final remaining transaction, its intentional deletion left the ledger at 0 rows. The Cloud Firestore document (`updatedAt: 1795189358513`) remained completely untouched and persistent for 65+ continuous hours with zero container resets.
+  - **Live Payee Verification Probe Planted:** Deployed two ₹101.00 test transactions with identical dates and descriptions differing ONLY by payee (`PROBE-PAYEE-A` and `PROBE-PAYEE-B`). Confirmed both rows simultaneously active in Cloud Firestore and `/api/sync` with total outflow ₹202.00.
+  - **Claude Desktop Refresh Notice:** Advised restarting Claude Desktop if its background node MCP process had cached the pre-Friday MCP server in memory.
 
 ## 9. Where to Find Things
 
